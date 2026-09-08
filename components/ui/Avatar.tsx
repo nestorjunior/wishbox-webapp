@@ -19,6 +19,7 @@ export function Avatar({
         alt=""
         width={size}
         height={size}
+        unoptimized
         className="rounded-full bg-(--color-border) object-cover"
         style={{ width: size, height: size }}
       />

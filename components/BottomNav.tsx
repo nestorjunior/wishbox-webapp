@@ -13,15 +13,14 @@ const items = [
   { href: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
 
-/**
- * Barra de navegação inferior compartilhada pelas telas autenticadas,
- * espelhando as abas do app mobile (Listas, Reservados, Adicionar, Conexões, Ajustes).
- */
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky bottom-0 -mx-4 -mb-24 mt-2 flex h-20 items-center justify-around border-t border-border bg-card px-4">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-20 w-full max-w-2xl items-center justify-around border-t border-border bg-card px-4"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {items.map((item) => {
         const { href, label, icon: Icon } = item;
         const active = pathname === href;
