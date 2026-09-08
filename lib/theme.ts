@@ -78,7 +78,8 @@ export const darkPrimaryShadow = {
   elevation: 8,
 };
 
-export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 // ---------- Theme type & context ----------
 
