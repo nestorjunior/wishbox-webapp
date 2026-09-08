@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wishbox WebApp
 
-## Getting Started
+Web app for the Wishbox platform, sharing domain logic and design tokens with the mobile app.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, Turbopack)
+- **React 19**
+- **TypeScript**
+- **Tailwind CSS v4** — design tokens mirrored from `wishbox-mobile/src/theme.ts`
+- **Firebase** (Auth + Storage)
+
+## Requirements
+
+- Node.js 20+
+- npm 10+
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local.example` to `.env.local` and fill in the values:
 
-## Learn More
+| Variable                                   | Description                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`                      | API base URL. Default for this workspace: `https://api-dev.appwishbox.com` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY`             | Firebase Web API key                                                       |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Firebase Auth domain                                                       |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Firebase project ID                                                        |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | Firebase Storage bucket                                                    |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID                                               |
+| `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase app ID                                                            |
+| `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL`   | Optional — Firebase Auth emulator URL for local testing                    |
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/                  # Routes and layouts (Next.js App Router)
+components/           # Feature components (Cards, Screen, Toast, sheets...)
+  ui/                  # Base UI kit (Button, Card, Field, ...)
+lib/                   # Domain logic shared with the mobile app
+  data/                # Types and sample data
+  api.ts               # Backend API client
+  firebase.ts          # Firebase (web persistence)
+  theme.ts             # Design tokens
+hooks/                 # Reusable hooks (use-list-actions, ...)
+store/                 # Global state (WishboxProvider)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Available scripts
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev      # start the dev server (Turbopack)
+npm run build    # production build
+npm run start    # run the production build
+npm run lint     # run ESLint
+```
