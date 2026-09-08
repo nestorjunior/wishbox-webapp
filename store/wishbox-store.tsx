@@ -1,3 +1,5 @@
+"use client";
+
 import {
   createContext,
   useCallback,
@@ -868,14 +870,12 @@ export function WishboxProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (process.env.NODE_ENV !== "production") {
           if (error instanceof ApiError) {
-            // eslint-disable-next-line no-console
             console.warn("[auth] backend bootstrap failed", {
               status: error.status,
               message: error.message,
               body: error.body,
             });
           } else {
-            // eslint-disable-next-line no-console
             console.warn("[auth] backend bootstrap failed", error);
           }
         }
@@ -1044,6 +1044,7 @@ export function WishboxProvider({ children }: { children: ReactNode }) {
     const acceptListInvite = async (
       notificationId: string,
       listId: string,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _role: ListRole = "view",
     ) => {
       const firebaseUser = auth?.currentUser;
