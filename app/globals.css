@@ -60,6 +60,27 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+.dark {
+  color-scheme: dark;
+  --background: #111020;
+  --foreground: #ffffff;
+
+  --color-primary: #7b4ff0;
+  --color-primary-soft: #2d1b6e;
+  --color-card: #1c1a2e;
+  --color-muted: #8e8aa0;
+  --color-border: #2c2840;
+  --color-danger: #ff6b7a;
+  --color-success: #2dc98e;
+
+  --color-tint-lilac: #2d1b6e;
+  --color-tint-mint: #0f3d2a;
+  --color-tint-rose: #3d1020;
+  --color-tint-cream: #3d2c0a;
+  --color-tint-sky: #0a1f3d;
+  --color-tint-peach: #3d1a0a;
+}
+
 @layer base {
   button:not(:disabled),
   [role="button"]:not(:disabled) {

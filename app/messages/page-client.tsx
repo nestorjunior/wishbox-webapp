@@ -91,6 +91,7 @@ function MessagesContent() {
     if (!firebaseUser) return;
     try {
       setLoading(true);
+      setError(null);
       const token = await firebaseUser.getIdToken();
       const page = await fetchConversationMessages(token, conversation.id);
       await markConversationRead(token, conversation.id);
@@ -114,10 +115,14 @@ function MessagesContent() {
     const content = text.trim();
     if (!content || !active || sending) return;
     const firebaseUser = auth?.currentUser;
-    if (!firebaseUser) return;
+    if (!firebaseUser) {
+      setError("Sessão indisponível para enviar mensagens.");
+      return;
+    }
 
     try {
       setSending(true);
+      setError(null);
       const token = await firebaseUser.getIdToken();
       const created = await sendConversationMessage(token, active.id, content);
       setMessages((current) => [...current, created]);
@@ -165,12 +170,25 @@ function MessagesContent() {
             ))}
           </div>
 
+          {error ? (
+            <p role="alert" className="text-xs font-medium text-(--color-danger)">
+              {error}
+            </p>
+          ) : null}
+
           <div className="flex items-center gap-2">
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void send();
+                }
+              }}
               placeholder="Escreva uma mensagem"
-              className="h-11 flex-1 rounded-md border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted focus:outline-none"
+              disabled={sending}
+              className="h-11 flex-1 rounded-md border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted focus:outline-none disabled:opacity-60"
             />
             <button
               type="button"

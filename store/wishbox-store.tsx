@@ -599,18 +599,18 @@ const fallbackTints: Product["tint"][] = [
 const listVisuals: Record<
   string,
   { emoji: string; tint: GiftList["tint"]; category: string }
-> = {
-  aniversário: { emoji: "🎂", tint: "rose", category: "aniversario" },
-  natal: { emoji: "🎄", tint: "mint", category: "natal" },
-  casamento: { emoji: "💍", tint: "lilac", category: "casamento" },
-  "chá de bebê": { emoji: "🍼", tint: "sky", category: "cha-de-bebe" },
-  "casa nova": { emoji: "🏡", tint: "cream", category: "casa-nova" },
-  formatura: { emoji: "🎓", tint: "lilac", category: "formatura" },
-  viagem: { emoji: "🧳", tint: "mint", category: "viagem" },
-  tecnologia: { emoji: "💻", tint: "sky", category: "tecnologia" },
-  livros: { emoji: "📚", tint: "peach", category: "livros" },
-  games: { emoji: "🎮", tint: "lilac", category: "games" },
-};
+  > = {
+    aniversário: { emoji: "🎂", tint: "rose", category: "aniversario" },
+    natal: { emoji: "🎄", tint: "mint", category: "natal" },
+    casamento: { emoji: "💍", tint: "lilac", category: "casamento" },
+    "chá de bebê": { emoji: "🍼", tint: "sky", category: "cha-de-bebe" },
+    "casa nova": { emoji: "🏡", tint: "cream", category: "casa-nova" },
+    formatura: { emoji: "🎓", tint: "lilac", category: "formatura" },
+    viagem: { emoji: "🧳", tint: "mint", category: "viagem" },
+    tecnologia: { emoji: "💻", tint: "sky", category: "tecnologia" },
+    livros: { emoji: "📚", tint: "peach", category: "livros" },
+    games: { emoji: "🎮", tint: "lilac", category: "games" },
+  };
 
 function toLocalList(list: BackendList): GiftList {
   const visual = listVisuals[list.name.toLowerCase()];
@@ -746,6 +746,10 @@ export function WishboxProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(() => !auth);
   const mountedRef = useRef(true);
   const sessionGenRef = useRef(0);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", state.darkMode);
+  }, [state.darkMode]);
 
   const syncSession = useCallback(
     async (firebaseUser: FirebaseAuthUser | null) => {

@@ -3,7 +3,6 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-// Mesmo símbolo usado no AppHeader do app: presente roxo sobre fundo lilás.
 export default function Icon() {
   return new ImageResponse(
     (
