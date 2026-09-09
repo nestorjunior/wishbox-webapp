@@ -1,14 +1,20 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+
 import { useSearchParams } from "next/navigation";
+
 import { Send } from "lucide-react";
+
 import { onAuthStateChanged } from "firebase/auth";
+
 import { FormHeader } from "@/components/FormHeader";
 import { Screen } from "@/components/Screen";
 import { Avatar, EmptyState } from "@/components/ui";
+
 import { backendUserToLocalUser } from "@/lib/backend-user";
 import { auth } from "@/lib/firebase";
+
 import {
   ApiError,
   createConversation,
@@ -19,6 +25,7 @@ import {
   type BackendConversation,
   type BackendMessage,
 } from "@/lib/api";
+
 import { useWishbox } from "@/store/wishbox-store";
 
 export default function MessagesPage() {
@@ -32,33 +39,46 @@ export default function MessagesPage() {
 function MessagesContent() {
   const params = useSearchParams();
   const targetUserId = params.get("u");
+
   const { backendUser } = useWishbox();
-  const [conversations, setConversations] = useState<BackendConversation[]>([]);
-  const [active, setActive] = useState<BackendConversation | null>(null);
+
+  const [conversations, setConversations] = useState<
+    BackendConversation[]
+  >([]);
+
+  const [active, setActive] =
+    useState<BackendConversation | null>(null);
+
   const [messages, setMessages] = useState<BackendMessage[]>([]);
+
   const [text, setText] = useState("");
-  const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] = useState(Boolean(auth));
+
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(
+    auth
+      ? null
+      : "Sessão indisponível para acessar as mensagens.",
+  );
 
   useEffect(() => {
-    let alive = true;
-
     if (!auth) {
-      setError("Sessão indisponível para acessar as mensagens.");
-      setLoading(false);
       return;
     }
 
-    // Firebase may restore the persisted session asynchronously. Waiting for
-    // onAuthStateChanged prevents a temporary null currentUser from being
-    // treated as a real signed-out state.
+    let alive = true;
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         if (alive) {
-          setError("Sessão indisponível para acessar as mensagens.");
+          setError(
+            "Sessão indisponível para acessar as mensagens.",
+          );
           setLoading(false);
         }
+
         return;
       }
 
@@ -68,22 +88,42 @@ function MessagesContent() {
           setError(null);
 
           const token = await firebaseUser.getIdToken();
+
           const inbox = await fetchConversations(token);
+
           if (!alive) return;
+
           setConversations(inbox.data);
 
           if (targetUserId) {
             const existing = inbox.data.find(
-              (conversation) => conversation.otherUser.id === targetUserId,
+              (conversation) =>
+                conversation.otherUser.id === targetUserId,
             );
+
             const conversation =
-              existing ?? (await createConversation(token, targetUserId));
-            const page = await fetchConversationMessages(token, conversation.id);
-            await markConversationRead(token, conversation.id);
+              existing ??
+              (await createConversation(
+                token,
+                targetUserId,
+              ));
+
+            const page =
+              await fetchConversationMessages(
+                token,
+                conversation.id,
+              );
+
+            await markConversationRead(
+              token,
+              conversation.id,
+            );
+
             if (!alive) return;
+
             setActive(conversation);
             setMessages(page.data);
-          } else if (alive) {
+          } else {
             setActive(null);
             setMessages([]);
           }
@@ -96,7 +136,9 @@ function MessagesContent() {
             );
           }
         } finally {
-          if (alive) setLoading(false);
+          if (alive) {
+            setLoading(false);
+          }
         }
       })();
     });
@@ -107,23 +149,46 @@ function MessagesContent() {
     };
   }, [targetUserId]);
 
-  const openConversation = async (conversation: BackendConversation) => {
+  const openConversation = async (
+    conversation: BackendConversation,
+  ) => {
     const firebaseUser = auth?.currentUser;
+
     if (!firebaseUser) {
-      setError("Sessão indisponível para acessar as mensagens.");
+      setError(
+        "Sessão indisponível para acessar as mensagens.",
+      );
       return;
     }
+
     try {
       setLoading(true);
       setError(null);
+
       const token = await firebaseUser.getIdToken();
-      const page = await fetchConversationMessages(token, conversation.id);
-      await markConversationRead(token, conversation.id);
+
+      const page =
+        await fetchConversationMessages(
+          token,
+          conversation.id,
+        );
+
+      await markConversationRead(
+        token,
+        conversation.id,
+      );
+
       setActive(conversation);
       setMessages(page.data);
+
       setConversations((current) =>
         current.map((item) =>
-          item.id === conversation.id ? { ...item, unreadCount: 0 } : item,
+          item.id === conversation.id
+            ? {
+                ...item,
+                unreadCount: 0,
+              }
+            : item,
         ),
       );
     } catch (requestError) {
@@ -139,19 +204,38 @@ function MessagesContent() {
 
   const send = async () => {
     const content = text.trim();
-    if (!content || !active || sending) return;
+
+    if (!content || !active || sending) {
+      return;
+    }
+
     const firebaseUser = auth?.currentUser;
+
     if (!firebaseUser) {
-      setError("Sessão indisponível para enviar mensagens.");
+      setError(
+        "Sessão indisponível para enviar mensagens.",
+      );
       return;
     }
 
     try {
       setSending(true);
       setError(null);
+
       const token = await firebaseUser.getIdToken();
-      const created = await sendConversationMessage(token, active.id, content);
-      setMessages((current) => [...current, created]);
+
+      const created =
+        await sendConversationMessage(
+          token,
+          active.id,
+          content,
+        );
+
+      setMessages((current) => [
+        ...current,
+        created,
+      ]);
+
       setText("");
     } catch (requestError) {
       setError(
@@ -176,8 +260,13 @@ function MessagesContent() {
               emoji="👤"
               size={36}
             />
+
             <p className="text-sm font-bold text-foreground">
-              {backendUserToLocalUser(active.otherUser).name}
+              {
+                backendUserToLocalUser(
+                  active.otherUser,
+                ).name
+              }
             </p>
           </div>
 
@@ -197,7 +286,10 @@ function MessagesContent() {
           </div>
 
           {error ? (
-            <p role="alert" className="text-xs font-medium text-(--color-danger)">
+            <p
+              role="alert"
+              className="text-xs font-medium text-(--color-danger)"
+            >
               {error}
             </p>
           ) : null}
@@ -205,9 +297,14 @@ function MessagesContent() {
           <div className="flex items-center gap-2">
             <input
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(event) =>
+                setText(event.target.value)
+              }
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey
+                ) {
                   event.preventDefault();
                   void send();
                 }
@@ -216,10 +313,13 @@ function MessagesContent() {
               disabled={sending}
               className="h-11 flex-1 rounded-md border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted focus:outline-none disabled:opacity-60"
             />
+
             <button
               type="button"
               aria-label="Enviar mensagem"
-              disabled={sending || !text.trim()}
+              disabled={
+                sending || !text.trim()
+              }
               onClick={() => void send()}
               className="flex size-11 items-center justify-center rounded-md bg-primary text-white disabled:opacity-60"
             >
@@ -228,29 +328,57 @@ function MessagesContent() {
           </div>
         </div>
       ) : loading ? (
-        <p className="text-sm text-muted">Carregando…</p>
+        <p className="text-sm text-muted">
+          Carregando…
+        </p>
       ) : error ? (
-        <EmptyState emoji="⚠️" title="Não foi possível carregar" description={error} />
+        <EmptyState
+          emoji="⚠️"
+          title="Não foi possível carregar"
+          description={error}
+        />
       ) : conversations.length === 0 ? (
-        <EmptyState emoji="💬" title="Nenhuma conversa" description="Suas conversas aparecem aqui." />
+        <EmptyState
+          emoji="💬"
+          title="Nenhuma conversa"
+          description="Suas conversas aparecem aqui."
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {conversations.map((conversation) => {
-            const otherUser = backendUserToLocalUser(conversation.otherUser);
+            const otherUser =
+              backendUserToLocalUser(
+                conversation.otherUser,
+              );
+
             return (
               <button
                 key={conversation.id}
                 type="button"
-                onClick={() => void openConversation(conversation)}
+                onClick={() =>
+                  void openConversation(
+                    conversation,
+                  )
+                }
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-[0_6px_14px_-2px_rgba(27,27,51,0.06)]"
               >
-                <Avatar photo={otherUser.photo} emoji={otherUser.emoji} tint={otherUser.tint} />
+                <Avatar
+                  photo={otherUser.photo}
+                  emoji={otherUser.emoji}
+                  tint={otherUser.tint}
+                />
+
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{otherUser.name}</p>
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {otherUser.name}
+                  </p>
+
                   <p className="truncate text-xs text-muted">
-                    {conversation.lastMessage?.content ?? "Sem mensagens"}
+                    {conversation.lastMessage?.content ??
+                      "Sem mensagens"}
                   </p>
                 </div>
+
                 {conversation.unreadCount > 0 ? (
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
                     {conversation.unreadCount}
