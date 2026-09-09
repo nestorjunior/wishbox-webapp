@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Send } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
 import { FormHeader } from "@/components/FormHeader";
 import { Screen } from "@/components/Screen";
 import { Avatar, EmptyState } from "@/components/ui";
@@ -43,8 +44,16 @@ function MessagesContent() {
   useEffect(() => {
     let alive = true;
 
-    void (async () => {
-      const firebaseUser = auth?.currentUser;
+    if (!auth) {
+      setError("Sessão indisponível para acessar as mensagens.");
+      setLoading(false);
+      return;
+    }
+
+    // Firebase may restore the persisted session asynchronously. Waiting for
+    // onAuthStateChanged prevents a temporary null currentUser from being
+    // treated as a real signed-out state.
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         if (alive) {
           setError("Sessão indisponível para acessar as mensagens.");
@@ -53,42 +62,57 @@ function MessagesContent() {
         return;
       }
 
-      try {
-        const token = await firebaseUser.getIdToken();
-        const inbox = await fetchConversations(token);
-        if (!alive) return;
-        setConversations(inbox.data);
+      void (async () => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        if (targetUserId) {
-          const existing = inbox.data.find((c) => c.otherUser.id === targetUserId);
-          const conversation = existing ?? (await createConversation(token, targetUserId));
-          const page = await fetchConversationMessages(token, conversation.id);
-          await markConversationRead(token, conversation.id);
+          const token = await firebaseUser.getIdToken();
+          const inbox = await fetchConversations(token);
           if (!alive) return;
-          setActive(conversation);
-          setMessages(page.data);
+          setConversations(inbox.data);
+
+          if (targetUserId) {
+            const existing = inbox.data.find(
+              (conversation) => conversation.otherUser.id === targetUserId,
+            );
+            const conversation =
+              existing ?? (await createConversation(token, targetUserId));
+            const page = await fetchConversationMessages(token, conversation.id);
+            await markConversationRead(token, conversation.id);
+            if (!alive) return;
+            setActive(conversation);
+            setMessages(page.data);
+          } else if (alive) {
+            setActive(null);
+            setMessages([]);
+          }
+        } catch (requestError) {
+          if (alive) {
+            setError(
+              requestError instanceof ApiError
+                ? requestError.message
+                : "Não foi possível carregar as mensagens agora.",
+            );
+          }
+        } finally {
+          if (alive) setLoading(false);
         }
-      } catch (requestError) {
-        if (alive) {
-          setError(
-            requestError instanceof ApiError
-              ? requestError.message
-              : "Não foi possível carregar as mensagens agora.",
-          );
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
+      })();
+    });
 
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, [targetUserId]);
 
   const openConversation = async (conversation: BackendConversation) => {
     const firebaseUser = auth?.currentUser;
-    if (!firebaseUser) return;
+    if (!firebaseUser) {
+      setError("Sessão indisponível para acessar as mensagens.");
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -98,7 +122,9 @@ function MessagesContent() {
       setActive(conversation);
       setMessages(page.data);
       setConversations((current) =>
-        current.map((item) => (item.id === conversation.id ? { ...item, unreadCount: 0 } : item)),
+        current.map((item) =>
+          item.id === conversation.id ? { ...item, unreadCount: 0 } : item,
+        ),
       );
     } catch (requestError) {
       setError(
