@@ -47,26 +47,16 @@ function errorMessage(error: unknown) {
     : "Não foi possível buscar pessoas e listas agora.";
 }
 
-function matchesSearchTerm(user: User, term: string) {
-  const normalizedTerm = term.toLocaleLowerCase();
-  return (
-    user.name.toLocaleLowerCase().includes(normalizedTerm) ||
-    user.username.toLocaleLowerCase().includes(normalizedTerm)
-  );
-}
-
 export function useBackendExploreSearch(
   query: string,
   excludedUserId?: string,
 ) {
-  const term = query.trim();
+  const term = query.trim().toLowerCase();
   const [state, setState] = useState<ExploreState>(initialState);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (term.length < 3) {
-      setState(initialState);
-      setLoading(false);
       return;
     }
 
@@ -82,45 +72,39 @@ export function useBackendExploreSearch(
               term,
               users: [],
               lists: [],
-              error: "Sessão indisponível para buscar usuários.",
+              error: "Sessão indisponível.",
             });
-            setLoading(false);
           }
           return;
         }
 
-        if (active) {
-          setState({
-            term,
-            users: [],
-            lists: [],
-            error: null,
-          });
-          setLoading(true);
-        }
+        setLoading(true);
 
         try {
           const token = await firebaseUser.getIdToken();
 
-          // Use exactly the same user-search strategy as Conexões.
+          // Use the same user-search strategy as the Connections screen.
           let users = (
             await autocompleteBackendUsers(token, term, { limit: 20 })
           )
             .map(backendUserToLocalUser)
-            .filter((user) => user.id !== excludedUserId)
-            .filter((user) => matchesSearchTerm(user, term));
+            .filter((user) => user.id !== excludedUserId);
 
-          // Same fallback used by Conexões.
+          // Keep the same fallback used by Connections when autocomplete
+          // does not return a result.
           if (users.length === 0) {
             users = (await fetchBackendUsers(token))
               .map(backendUserToLocalUser)
-              .filter((user) => user.id !== excludedUserId)
-              .filter((user) => matchesSearchTerm(user, term))
+              .filter(
+                (user) =>
+                  user.id !== excludedUserId &&
+                  (user.username.toLowerCase().includes(term) ||
+                    user.name.toLowerCase().includes(term)),
+              )
               .slice(0, 20);
           }
 
-          // IMPORTANT: failure loading one user's lists must NOT erase the
-          // user-search results. The user result is independent from lists.
+          // Loading lists must not make an otherwise valid user search fail.
           const listGroups = await Promise.all(
             users.map(async (user) => {
               try {
@@ -137,28 +121,30 @@ export function useBackendExploreSearch(
             }),
           );
 
-          if (!active) return;
-
-          setState({
-            term,
-            users,
-            lists: listGroups.flat(),
-            error: null,
-          });
+          if (active) {
+            setState({
+              term,
+              users,
+              lists: listGroups.flat(),
+              error: null,
+            });
+          }
         } catch (error) {
-          if (!active) return;
-
-          setState({
-            term,
-            users: [],
-            lists: [],
-            error: errorMessage(error),
-          });
+          if (active) {
+            setState({
+              term,
+              users: [],
+              lists: [],
+              error: errorMessage(error),
+            });
+          }
         } finally {
-          if (active) setLoading(false);
+          if (active) {
+            setLoading(false);
+          }
         }
       })();
-    }, 120);
+    }, 250);
 
     return () => {
       active = false;
@@ -166,12 +152,13 @@ export function useBackendExploreSearch(
     };
   }, [excludedUserId, term]);
 
-  const hasCurrentTerm = term.length >= 3 && state.term === term;
+  const current = state.term === term;
+  const hasSearchTerm = term.length >= 3;
 
   return {
-    users: hasCurrentTerm ? state.users : [],
-    lists: hasCurrentTerm ? state.lists : [],
-    error: hasCurrentTerm ? state.error : null,
-    loading: term.length >= 3 && (!hasCurrentTerm || loading),
+    users: hasSearchTerm && current ? state.users : [],
+    lists: hasSearchTerm && current ? state.lists : [],
+    error: hasSearchTerm && current ? state.error : null,
+    loading: hasSearchTerm && (!current || loading),
   };
 }
