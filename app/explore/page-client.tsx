@@ -11,7 +11,7 @@ import { useBackendExploreSearch } from "@/hooks/use-backend-explore-search";
 import { useWishbox } from "@/store/wishbox-store";
 
 export default function ExplorePage() {
-  const { backendUser } = useWishbox();
+  const { backendUser, dispatch } = useWishbox();
   const [query, setQuery] = useState("");
   const { users, lists, error, loading } = useBackendExploreSearch(query, backendUser?.id);
 
@@ -46,6 +46,12 @@ export default function ExplorePage() {
                 <Link
                   key={user.id}
                   href={`/profile/${user.username}`}
+                  onClick={() => {
+                    dispatch({
+                      type: "users/hydrate",
+                      users: [user],
+                    });
+                  }}
                   className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-[0_6px_14px_-2px_rgba(27,27,51,0.06)]"
                 >
                   <Avatar photo={user.photo} emoji={user.emoji} tint={user.tint} />

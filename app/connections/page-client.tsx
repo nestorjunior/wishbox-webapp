@@ -22,6 +22,7 @@ export default function ConnectionsPage() {
     acceptFollowRequest,
     cancelFollowRequest,
     rejectFollowRequest,
+    dispatch
   } = useWishbox();
   const [tab, setTab] = useState<Tab>("seguindo");
   const [query, setQuery] = useState("");
@@ -108,6 +109,12 @@ export default function ConnectionsPage() {
                 <Link
                   href={`/profile/${user.username}`}
                   className="flex min-w-0 flex-1 items-center gap-3"
+                  onClick={() => {
+                    dispatch({
+                      type: "users/hydrate",
+                      users: [user],
+                    });
+                  }}
                 >
                   <Avatar photo={user.photo} emoji={user.emoji} tint={user.tint} />
                   <div className="min-w-0">
