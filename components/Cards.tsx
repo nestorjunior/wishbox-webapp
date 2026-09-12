@@ -59,22 +59,25 @@ export function ListCard({
   return (
     <>
       <div
-        className={`relative flex flex-1 flex-col items-center gap-1 rounded-(--radius-lg) border border-(--color-border) bg-(--color-card) p-3.5 shadow-[0_6px_14px_-2px_rgba(27,27,51,0.06)] ${
+        className={`relative flex h-[114px] flex-col items-center rounded-[14px] border border-border bg-card p-3 shadow-[0_5px_14px_-4px_rgba(27,27,51,0.06)] ${
           list.paused ? "opacity-50" : ""
         }`}
       >
         <Link
           href={`/list/${list.id}`}
           className="absolute inset-0"
-          aria-label={list.name}
+          aria-label={`${list.name}, ${count} ${
+            count === 1 ? "item" : "itens"
+          }`}
         />
 
-        <div className="z-10 flex min-h-[22px] w-full items-start justify-between">
-          <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <div className="z-10 flex min-h-[18px] w-full items-start justify-between">
+          <div className="flex flex-wrap items-center gap-1">
             <PrivacyBadge privacy={list.privacy} />
+
             {list.paused ? (
-              <span className="flex items-center gap-1 rounded-(--radius-full,999px) border border-(--color-border) bg-(--background) px-2 py-0.5 text-[10px] font-semibold text-(--color-muted)">
-                <PauseCircle size={11} />
+              <span className="flex items-center gap-1 rounded-full border border-border bg-background px-1.5 py-0.5 text-[9px] font-semibold text-muted">
+                <PauseCircle size={10} />
                 Pausada
               </span>
             ) : null}
@@ -88,25 +91,25 @@ export function ListCard({
                 event.preventDefault();
                 setMenuOpen(true);
               }}
-              className="z-10 flex size-[22px] items-center justify-center rounded-full bg-(--background)"
+              aria-label={`Ações da lista ${list.name}`}
+              className="z-10 flex size-5 items-center justify-center rounded-full bg-background"
             >
-              <Ellipsis size={16} className="text-(--color-muted)" />
+              <Ellipsis size={15} className="text-muted" />
             </button>
           ) : null}
         </div>
 
         <div
-          className="mt-2 mb-1.5 flex size-[54px] items-center justify-center rounded-(--radius-md)"
-          style={{ backgroundColor: tints[list.tint] ?? tints.lilac }}
+          className="mt-1 flex size-[48px] items-center justify-center rounded-[10px]"
+          style={{
+            backgroundColor: tints[list.tint] ?? tints.lilac,
+          }}
         >
-          <span className="text-2xl">{list.emoji}</span>
+          <span className="text-[22px]">{list.emoji}</span>
         </div>
 
-        <p className="w-full truncate text-center text-sm font-bold text-(--foreground)">
+        <p className="mt-1.5 w-full truncate text-center text-[13px] font-bold text-foreground">
           {list.name}
-        </p>
-        <p className="text-xs text-(--color-muted)">
-          {count} {count === 1 ? "item" : "itens"}
         </p>
       </div>
 

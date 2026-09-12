@@ -1,10 +1,12 @@
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
+
 import {
   connectAuthEmulator,
   getAuth,
   browserLocalPersistence,
   type Auth,
 } from "firebase/auth";
+
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 
 const firebaseConfig = {
@@ -33,6 +35,23 @@ export async function uploadImageToStorage(
   return uploadFileToStorage(uri, `products/${fileName}`);
 }
 
+export async function uploadImageFileToStorage(
+  file: Blob,
+  fileName: string,
+): Promise<string> {
+  if (!storage) {
+    throw new Error("Firebase Storage não está configurado.");
+  }
+
+  const storageRef = ref(storage, `products/${fileName}`);
+
+  await uploadBytes(storageRef, file, {
+    contentType: file.type || "image/jpeg",
+  });
+
+  return getDownloadURL(storageRef);
+}
+
 export async function uploadAvatarToStorage(
   uri: string,
   fileName: string,
@@ -49,34 +68,43 @@ async function uploadFileToStorage(
   }
 
   const response = await fetch(uri);
+
   if (!response.ok) {
     throw new Error("Não foi possível carregar a imagem selecionada.");
   }
 
   const blob = await response.blob();
+
   const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, blob);
+
+  await uploadBytes(storageRef, blob, {
+    contentType: blob.type || "image/jpeg",
+  });
 
   return getDownloadURL(storageRef);
 }
 
 function createAuth(app: FirebaseApp): Auth {
-  const auth = getAuth(app);
+  const firebaseAuth = getAuth(app);
+
   if (typeof window !== "undefined") {
-    // Persist the session across reloads/tabs, mirroring the mobile app's persisted session.
-    void auth.setPersistence(browserLocalPersistence);
+    void firebaseAuth.setPersistence(browserLocalPersistence);
   }
-  return auth;
+
+  return firebaseAuth;
 }
 
 export const auth = firebaseApp ? createAuth(firebaseApp) : null;
+
 export const isFirebaseConfigured = hasFirebaseConfig;
 
 const authEmulatorUrl = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL;
 
 if (auth && authEmulatorUrl) {
   try {
-    connectAuthEmulator(auth, authEmulatorUrl, { disableWarnings: true });
+    connectAuthEmulator(auth, authEmulatorUrl, {
+      disableWarnings: true,
+    });
   } catch {
     // Ignore reconnect errors in fast refresh.
   }
