@@ -2,60 +2,17 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Link as LinkIcon } from "lucide-react";
-
+import { Camera, Link as LinkIcon } from "lucide-react";
 import { Button, Card, Field } from "@/components/ui";
 import { FormHeader } from "@/components/FormHeader";
-import { ProductImagePicker } from "@/components/ProductImagePicker";
 import { Screen } from "@/components/Screen";
-
 import { addItemToList, createItem } from "@/lib/api";
-import { auth, uploadImageFileToStorage } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useWishbox } from "@/store/wishbox-store";
-
-function createImageFileName(file: File): string {
-  const extension =
-    file.name.split(".").pop()?.toLowerCase() || "jpg";
-
-  const safeExtension = /^[a-z0-9]+$/.test(extension)
-    ? extension
-    : "jpg";
-
-  return `${crypto.randomUUID()}.${safeExtension}`;
-}
-
-function formatCurrencyBR(value: string): string {
-  const digits = value.replace(/\D/g, "");
-
-  if (!digits) {
-    return "";
-  }
-
-  const cents = Number(digits) / 100;
-
-  return cents.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function parseCurrencyBR(value: string): number {
-  const normalized = value
-    .replace(/\./g, "")
-    .replace(",", ".");
-
-  return Number(normalized) || 0;
-}
 
 export default function AddProductPage() {
   const router = useRouter();
-
-  const {
-    editableLists,
-    dispatch,
-    authReady,
-    backendUser,
-  } = useWishbox();
+  const { editableLists, dispatch } = useWishbox();
 
   const [listId, setListId] = useState(editableLists[0]?.id ?? "");
   const [name, setName] = useState("");
@@ -63,9 +20,7 @@ export default function AddProductPage() {
   const [store, setStore] = useState("");
   const [detail, setDetail] = useState("");
   const [link, setLink] = useState("");
-
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
+  const [image, setImage] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -73,9 +28,7 @@ export default function AddProductPage() {
     event.preventDefault();
 
     if (!auth?.currentUser || !listId) {
-      setMessage(
-        "Escolha uma lista e entre novamente para salvar o produto.",
-      );
+      setMessage("Escolha uma lista e entre novamente para salvar o produto.");
       return;
     }
 
@@ -89,38 +42,19 @@ export default function AddProductPage() {
 
     try {
       const token = await auth.currentUser.getIdToken();
-
-      let imageUrl: string | undefined;
-
-      if (imageFile) {
-        imageUrl = await uploadImageFileToStorage(
-          imageFile,
-          createImageFileName(imageFile),
-        );
-      }
-
-      const priceValue = parseCurrencyBR(price);
+      const priceValue =
+        Number(price.replace(/\./g, "").replace(",", ".")) || 0;
 
       const created = await createItem(token, {
         title: name.trim(),
-
         description:
-          [
-            detail.trim(),
-            store.trim() ? `Loja: ${store.trim()}` : "",
-          ]
+          [detail.trim(), store.trim() ? `Loja: ${store.trim()}` : ""]
             .filter(Boolean)
             .join("\n") || undefined,
-
         externalUrl: link.trim() || undefined,
-
-        imageExternalUrl: imageUrl,
-
-        priceAmount:
-          priceValue > 0 ? priceValue.toFixed(2) : undefined,
-
+        imageExternalUrl: image.trim() || undefined,
+        priceAmount: priceValue > 0 ? priceValue.toFixed(2) : undefined,
         priceCurrency: priceValue > 0 ? "BRL" : undefined,
-
         status: "ACTIVE",
         priority: "MEDIUM",
       });
@@ -142,7 +76,7 @@ export default function AddProductPage() {
           link: link.trim(),
           note: "",
           emoji: "🎁",
-          image: imageUrl,
+          image: image.trim() || undefined,
           tint: "lilac",
           priority: "media",
           quantity: 1,
@@ -156,9 +90,7 @@ export default function AddProductPage() {
       });
 
       router.push(`/list/${listId}`);
-    } catch (error) {
-      console.error("Erro ao adicionar produto:", error);
-
+    } catch {
       setMessage(
         "Não foi possível adicionar o produto agora. Tente novamente.",
       );
@@ -169,37 +101,47 @@ export default function AddProductPage() {
 
   return (
     <Screen>
-      <main className="mx-auto flex w-full max-w-[520px] flex-1 flex-col gap-4">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
         <FormHeader />
 
-        <div className="mt-1 space-y-1">
-          <h1 className="text-xl font-bold text-foreground">
+        <div className="mt-2 space-y-1">
+          <h1 className="text-2xl font-bold text-foreground">
             Adicionar produto
           </h1>
-
           <p className="text-sm leading-5 text-muted">
             Cadastre algo que você gostaria de ganhar.
           </p>
         </div>
 
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} className="space-y-4">
           <Card className="space-y-3">
-            <ProductImagePicker
-              value={imageFile}
-              onChange={setImageFile}
-              onError={setMessage}
-            />
+            <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-background p-4 text-center">
+              <Camera size={24} className="text-muted" />
 
-            {/* <Field
-              placeholder="https://.../imagem.jpg"
-              value=""
-              readOnly
-              aria-label="URL da imagem"
-              className="hidden"
-            /> */}
+              <p className="text-sm text-muted">
+                Adicione uma imagem pelo link
+              </p>
+
+              <Field
+                placeholder="https://.../imagem.jpg"
+                value={image}
+                onChange={(event) => setImage(event.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            <Button
+              title="Selecionar imagem"
+              variant="outline"
+              icon={<Camera size={16} />}
+              onClick={() =>
+                setMessage("O seletor de imagens será conectado em breve.")
+              }
+              className="w-full"
+            />
           </Card>
 
-          <Card className="space-y-3">
+          <Card className="space-y-3.5">
             <Field
               label="Nome do produto"
               value={name}
@@ -211,10 +153,8 @@ export default function AddProductPage() {
             <Field
               label="Preço (R$)"
               value={price}
-              onChange={(event) => {
-                setPrice(formatCurrencyBR(event.target.value));
-              }}
-              inputMode="numeric"
+              onChange={(event) => setPrice(event.target.value)}
+              inputMode="decimal"
               placeholder="0,00"
             />
 
@@ -258,7 +198,7 @@ export default function AddProductPage() {
           </Card>
 
           {message ? (
-            <p className="rounded-lg bg-tint-rose px-4 py-3 text-sm text-danger">
+            <p className="rounded-md bg-tint-rose px-4 py-3 text-sm text-danger">
               {message}
             </p>
           ) : null}
