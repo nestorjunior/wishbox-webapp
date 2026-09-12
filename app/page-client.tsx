@@ -105,7 +105,7 @@ function LoginContent() {
   if (backendUser) {
     return (
       <Screen header>
-        <main className="flex flex-1 flex-col gap-6 pt-2">
+        <main className="flex flex-1 flex-col gap-5 pt-1">
           {me ? (
             <OnboardingCarousel
               me={me}
@@ -128,16 +128,18 @@ function LoginContent() {
             />
           ) : (
             <section className="w-full">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-sm font-extrabold text-foreground">
-                  <ListChecks className="text-primary" size={18} /> Minhas
-                  listas
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-foreground">
+                  <ListChecks className="text-primary" size={16} />
+                  Minhas listas
                 </h2>
-                <span className="text-xs text-muted">
+
+                <span className="text-[11px] text-muted">
                   {accessibleLists.length}{" "}
                   {accessibleLists.length === 1 ? "lista" : "listas"}
                 </span>
               </div>
+
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {accessibleLists.map((list) => (
                   <ListCard
@@ -151,6 +153,7 @@ function LoginContent() {
             </section>
           )}
         </main>
+
         <BottomNav />
       </Screen>
     );

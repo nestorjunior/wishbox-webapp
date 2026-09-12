@@ -13,6 +13,7 @@ import { useWishbox } from "@/store/wishbox-store";
 export default function AddProductPage() {
   const router = useRouter();
   const { editableLists, dispatch } = useWishbox();
+
   const [listId, setListId] = useState(editableLists[0]?.id ?? "");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -25,19 +26,25 @@ export default function AddProductPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     if (!auth?.currentUser || !listId) {
       setMessage("Escolha uma lista e entre novamente para salvar o produto.");
       return;
     }
+
     if (!name.trim()) {
       setMessage("Informe o nome do produto.");
       return;
     }
+
     setBusy(true);
     setMessage("");
+
     try {
       const token = await auth.currentUser.getIdToken();
-      const priceValue = Number(price.replace(".", "").replace(",", ".")) || 0;
+      const priceValue =
+        Number(price.replace(/\./g, "").replace(",", ".")) || 0;
+
       const created = await createItem(token, {
         title: name.trim(),
         description:
@@ -51,7 +58,12 @@ export default function AddProductPage() {
         status: "ACTIVE",
         priority: "MEDIUM",
       });
-      await addItemToList(token, { listId, itemId: created.id });
+
+      await addItemToList(token, {
+        listId,
+        itemId: created.id,
+      });
+
       dispatch({
         type: "product/create",
         product: {
@@ -76,6 +88,7 @@ export default function AddProductPage() {
           archived: false,
         },
       });
+
       router.push(`/list/${listId}`);
     } catch {
       setMessage(
@@ -90,6 +103,7 @@ export default function AddProductPage() {
     <Screen>
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
         <FormHeader />
+
         <div className="mt-2 space-y-1">
           <h1 className="text-2xl font-bold text-foreground">
             Adicionar produto
@@ -103,9 +117,11 @@ export default function AddProductPage() {
           <Card className="space-y-3">
             <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-background p-4 text-center">
               <Camera size={24} className="text-muted" />
+
               <p className="text-sm text-muted">
                 Adicione uma imagem pelo link
               </p>
+
               <Field
                 placeholder="https://.../imagem.jpg"
                 value={image}
@@ -113,6 +129,7 @@ export default function AddProductPage() {
                 className="w-full"
               />
             </div>
+
             <Button
               title="Selecionar imagem"
               variant="outline"
@@ -132,6 +149,7 @@ export default function AddProductPage() {
               placeholder="Ex.: Fone de ouvido"
               required
             />
+
             <Field
               label="Preço (R$)"
               value={price}
@@ -139,12 +157,14 @@ export default function AddProductPage() {
               inputMode="decimal"
               placeholder="0,00"
             />
+
             <Field
               label="Loja"
               value={store}
               onChange={(event) => setStore(event.target.value)}
               placeholder="Ex.: Loja Tech"
             />
+
             <Field
               label="Detalhe"
               multiline
@@ -152,6 +172,7 @@ export default function AddProductPage() {
               onChange={(event) => setDetail(event.target.value)}
               placeholder="Tamanho, cor, modelo..."
             />
+
             <Field
               label="Link do produto"
               value={link}
@@ -159,6 +180,7 @@ export default function AddProductPage() {
               placeholder="https://loja.com/produto"
               icon={<LinkIcon size={18} className="text-muted" />}
             />
+
             <Field
               label="Adicionar à lista"
               as="select"
@@ -166,6 +188,7 @@ export default function AddProductPage() {
               onChange={(event) => setListId(event.target.value)}
             >
               <option value="">Selecione uma lista</option>
+
               {editableLists.map((list) => (
                 <option key={list.id} value={list.id}>
                   {list.name}
@@ -179,6 +202,7 @@ export default function AddProductPage() {
               {message}
             </p>
           ) : null}
+
           <Button
             title="Adicionar produto"
             type="submit"

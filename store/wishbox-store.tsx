@@ -772,13 +772,14 @@ export function WishboxProvider({ children }: { children: ReactNode }) {
         const backendUser = await ensureBackendUserSession(firebaseUser);
         if (stale()) return;
         dispatch({ type: "auth/set-backend-user", user: backendUser });
-        setAuthReady(true);
-
+      
         const token = await firebaseUser.getIdToken();
+
         const [catalog, socialGraph] = await Promise.all([
           fetchBackendCatalog(token),
           fetchBackendFollowRequests(token),
         ]);
+        
         const relatedUserIds = new Set(
           [
             ...socialGraph.following,

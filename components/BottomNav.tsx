@@ -10,7 +10,7 @@ const items = [
   { href: "/reserved", label: "Reservados", icon: Gift },
   { href: "/add-product", label: "Adicionar", icon: Plus, isAction: true },
   { href: "/connections", label: "Conexões", icon: Users },
-  { href: "/settings", label: "Ajustes", icon: Settings },
+  { href: "/settings", label: "Configurações", icon: Settings },
 ] as const;
 
 export function BottomNav() {
@@ -18,40 +18,45 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-20 w-full max-w-2xl items-center justify-around border-t border-border bg-card px-4"
+      aria-label="Navegação principal"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {items.map((item) => {
-        const { href, label, icon: Icon } = item;
-        const active = pathname === href;
+      <div className="mx-auto flex h-[60px] w-full max-w-[840px] items-center justify-between px-4">
+        {items.map((item) => {
+          const { href, label, icon: Icon } = item;
+          const active = pathname === href;
 
-        if ("isAction" in item && item.isAction) {
+          if ("isAction" in item && item.isAction) {
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                className="flex size-9 items-center justify-center rounded-full bg-primary text-white shadow-[0_5px_12px_-4px_var(--color-primary)] transition-transform hover:scale-105"
+              >
+                <Icon size={20} strokeWidth={2} />
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={href}
               href={href}
-              aria-label={label}
-              className="flex size-11 items-center justify-center rounded-full bg-primary text-white"
+              className={cn(
+                "flex min-w-[64px] flex-col items-center gap-0.5 text-[10px] transition-opacity hover:opacity-70",
+                active
+                  ? "font-bold text-primary"
+                  : "font-medium text-muted",
+              )}
             >
-              <Icon size={22} />
+              <Icon size={18} strokeWidth={2} />
+              <span>{label}</span>
             </Link>
           );
-        }
-
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex flex-col items-center gap-1 text-xs font-bold",
-              active ? "text-primary" : "text-muted font-medium",
-            )}
-          >
-            <Icon size={20} />
-            {label}
-          </Link>
-        );
-      })}
+        })}
+      </div>
     </nav>
   );
 }
