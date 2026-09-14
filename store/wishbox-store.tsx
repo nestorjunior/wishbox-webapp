@@ -1665,6 +1665,9 @@ export function WishboxProvider({
     mountedRef.current = true;
 
     if (!auth) {
+      // Firebase not configured: no external subscription to attach, so
+      // this one-time flag flip on mount is safe despite the lint rule.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthReady(true);
       return;
     }

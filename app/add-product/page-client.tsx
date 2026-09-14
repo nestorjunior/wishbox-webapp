@@ -3,7 +3,6 @@
 import {
   type FormEvent,
   Suspense,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -11,9 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Globe,
   Link as LinkIcon,
-  List,
   Lock,
-  Plus,
   Users,
 } from "lucide-react";
 
@@ -105,12 +102,6 @@ function AddProductContent() {
   const searchParams = useSearchParams();
   const initialListIdParam = searchParams.get("listId");
 
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const {
     editableLists,
     backendUser,
@@ -121,7 +112,7 @@ function AddProductContent() {
   const availableLists = editableLists;
   const hasAvailableLists = availableLists.length > 0;
 
-  const [listMode, setListMode] = useState<"existing" | "new">("existing");
+  const [listMode, setListMode] = useState<"existing" | "new" | null>(null);
   const [selectedListId, setSelectedListId] = useState("");
 
   // New list form state
@@ -141,16 +132,8 @@ function AddProductContent() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Sync initial list from query param or available lists
-  useEffect(() => {
-    if (initialListIdParam && availableLists.some((l) => l.id === initialListIdParam)) {
-      setSelectedListId(initialListIdParam);
-      setListMode("existing");
-    } else if (availableLists.length === 0 && authReady) {
-      setListMode("new");
-    }
-  }, [initialListIdParam, availableLists, authReady]);
-
+  // Derived instead of synced via effect: falls back to the query param list,
+  // then the first available list, unless the user picked something else.
   const effectiveListId = useMemo(() => {
     if (
       selectedListId &&
@@ -159,8 +142,19 @@ function AddProductContent() {
       return selectedListId;
     }
 
+    if (
+      initialListIdParam &&
+      availableLists.some((list) => list.id === initialListIdParam)
+    ) {
+      return initialListIdParam;
+    }
+
     return availableLists[0]?.id ?? "";
-  }, [availableLists, selectedListId]);
+  }, [availableLists, selectedListId, initialListIdParam]);
+
+  // Derived instead of synced via effect: defaults to "new" once lists have
+  // loaded and there is none available, unless the user explicitly toggled it.
+  const effectiveListMode = listMode ?? (hasAvailableLists ? "existing" : "new");
 
   const selectedList = useMemo(
     () => availableLists.find((list) => list.id === effectiveListId),
@@ -168,12 +162,11 @@ function AddProductContent() {
   );
 
   const isListValid =
-    listMode === "existing"
+    effectiveListMode === "existing"
       ? hasAvailableLists && Boolean(effectiveListId)
       : Boolean(newListName.trim());
 
   const canSubmit =
-    mounted &&
     authReady &&
     !busy &&
     Boolean(name.trim()) &&
@@ -201,12 +194,12 @@ function AddProductContent() {
       return;
     }
 
-    if (listMode === "new" && !newListName.trim()) {
+    if (effectiveListMode === "new" && !newListName.trim()) {
       setMessage("Informe o nome da nova lista.");
       return;
     }
 
-    if (listMode === "existing" && !effectiveListId) {
+    if (effectiveListMode === "existing" && !effectiveListId) {
       setMessage("Selecione uma lista.");
       return;
     }
@@ -219,7 +212,7 @@ function AddProductContent() {
       let targetListId = effectiveListId;
 
       // 1. Criar nova lista se o usuário escolheu essa opção
-      if (listMode === "new") {
+      if (effectiveListMode === "new") {
         const trimmedNewListName = newListName.trim();
         const trimmedNewListDesc = newListDescription.trim();
 
@@ -426,7 +419,7 @@ function AddProductContent() {
               disabled={busy}
             />
 
-            {listMode === "existing" && hasAvailableLists ? (
+            {effectiveListMode === "existing" && hasAvailableLists ? (
               <div className="space-y-1.5">
                 <Field
                   label="Adicionar à lista"
@@ -440,7 +433,7 @@ function AddProductContent() {
                       setSelectedListId(val);
                     }
                   }}
-                  disabled={!mounted || !authReady || busy}
+                  disabled={!authReady || busy}
                 >
                   {availableLists.map((list) => (
                     <option
@@ -525,6 +518,41 @@ function AddProductContent() {
                     ))}
                   </div>
                 </div>
+
+                <section className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">
+                    Privacidade
+                  </label>
+                  {(
+                    [
+                      ["public", "Pública", Globe],
+                      ["private", "Privada", Lock],
+                      ["guests", "Convidados", Users],
+                    ] as const
+                  ).map(([value, title, Icon]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      onClick={() => setNewListPrivacy(value)}
+                      disabled={busy}
+                      className={`flex w-full items-center gap-2.5 rounded-md border p-2.5 text-left text-sm ${
+                        newListPrivacy === value
+                          ? "border-primary bg-primary-soft text-primary"
+                          : "border-border bg-card text-foreground"
+                      }`}
+                    >
+                      <Icon
+                        size={16}
+                        className={
+                          newListPrivacy === value
+                            ? "text-primary"
+                            : "text-muted"
+                        }
+                      />
+                      {title}
+                    </button>
+                  ))}
+                </section>
               </div>
             )}
           </Card>
@@ -543,7 +571,7 @@ function AddProductContent() {
             title={
               !authReady
                 ? "Carregando..."
-                : listMode === "new"
+                : effectiveListMode === "new"
                   ? "Criar lista e adicionar produto"
                   : "Adicionar produto"
             }
