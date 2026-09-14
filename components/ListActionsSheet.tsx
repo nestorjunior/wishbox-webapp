@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PauseCircle, Pencil, PlayCircle, Share2, Trash2 } from "lucide-react";
 import type { GiftList } from "@/lib/data";
 import { useListActions } from "@/hooks/use-list-actions";
@@ -26,76 +26,94 @@ export function ListActionsSheet({
     cancelRemove,
   } = useListActions(list, { onDeleted: onClose });
   const [shareOpen, setShareOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const runAndClose = (action: () => void) => {
     onClose();
     action();
   };
 
+  useEffect(() => {
+    if (!visible) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [visible, onClose]);
+
   if (!visible) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end">
+      <div
+        ref={menuRef}
+        role="menu"
+        className="absolute top-full right-0 z-50 mt-1.5 w-52 overflow-hidden rounded-(--radius-md) border border-(--color-border) bg-(--color-card) py-1 shadow-[0_10px_30px_-6px_rgba(27,27,51,0.2)]"
+      >
         <button
           type="button"
-          aria-label="Fechar"
-          onClick={onClose}
-          className="absolute inset-0 bg-[rgba(20,20,28,0.4)]"
-        />
-        <div className="relative w-full rounded-t-(--radius-xl) bg-(--color-card) px-5 pt-2.5 pb-7 shadow-[0_-6px_20px_-4px_rgba(27,27,51,0.15)]">
-          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-(--color-border)" />
-          <p className="mb-2 truncate text-[17px] font-bold text-(--foreground)">
-            {list.name}
-          </p>
+          role="menuitem"
+          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-(--color-background)"
+          onClick={() => runAndClose(editList)}
+        >
+          <Pencil size={16} className="text-(--foreground)" />
+          <span className="text-[13px] text-(--foreground)">Editar lista</span>
+        </button>
 
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 py-3.5 text-left"
-            onClick={() => runAndClose(editList)}
-          >
-            <Pencil size={18} className="text-(--foreground)" />
-            <span className="text-sm text-(--foreground)">Editar lista</span>
-          </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-(--color-background)"
+          onClick={() => {
+            onClose();
+            setShareOpen(true);
+          }}
+        >
+          <Share2 size={16} className="text-(--foreground)" />
+          <span className="text-[13px] text-(--foreground)">
+            Compartilhar lista
+          </span>
+        </button>
 
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 py-3.5 text-left"
-            onClick={() => {
-              onClose();
-              setShareOpen(true);
-            }}
-          >
-            <Share2 size={18} className="text-(--foreground)" />
-            <span className="text-sm text-(--foreground)">
-              Compartilhar lista
-            </span>
-          </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-(--color-background)"
+          onClick={() => runAndClose(togglePause)}
+        >
+          {list.paused ? (
+            <PlayCircle size={16} className="text-(--foreground)" />
+          ) : (
+            <PauseCircle size={16} className="text-(--foreground)" />
+          )}
+          <span className="text-[13px] text-(--foreground)">
+            {list.paused ? "Retomar lista" : "Pausar lista"}
+          </span>
+        </button>
 
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 py-3.5 text-left"
-            onClick={() => runAndClose(togglePause)}
-          >
-            {list.paused ? (
-              <PlayCircle size={18} className="text-(--foreground)" />
-            ) : (
-              <PauseCircle size={18} className="text-(--foreground)" />
-            )}
-            <span className="text-sm text-(--foreground)">
-              {list.paused ? "Retomar lista" : "Pausar lista"}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 py-3.5 text-left"
-            onClick={requestRemove}
-          >
-            <Trash2 size={18} className="text-(--color-danger)" />
-            <span className="text-sm text-(--color-danger)">Excluir lista</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          role="menuitem"
+          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-(--color-background)"
+          onClick={requestRemove}
+        >
+          <Trash2 size={16} className="text-(--color-danger)" />
+          <span className="text-[13px] text-(--color-danger)">
+            Excluir lista
+          </span>
+        </button>
       </div>
 
       <ConfirmDialog

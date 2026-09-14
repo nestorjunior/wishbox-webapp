@@ -109,6 +109,11 @@ export default function ListPage() {
               ownerPhoto={owner?.photo}
               onPress={() => router.push(`/product/${product.id}`)}
               showActions={isOwner}
+              onEdit={() =>
+                router.push(
+                  `/add-product?productId=${product.id}&listId=${list.id}`,
+                )
+              }
               isReservedByMe={Boolean(
                 backendUser && product.reservedBy === backendUser.id,
               )}
