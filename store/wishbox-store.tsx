@@ -148,6 +148,7 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "auth/login":
       return { ...state, authed: true };
+
     case "auth/logout":
       return {
         ...state,
@@ -162,45 +163,79 @@ function reducer(state: State, action: Action): State {
         pendingSent: [],
         notifications: [],
       };
+
     case "auth/set-backend-user": {
       const localUser = backendUserToLocalUser(action.user);
-      const users = state.users.some((user) => user.id === localUser.id)
+
+      const users = state.users.some(
+        (user) => user.id === localUser.id,
+      )
         ? state.users.map((user) =>
-            user.id === localUser.id ? { ...user, ...localUser } : user,
+            user.id === localUser.id
+              ? { ...user, ...localUser }
+              : user,
           )
         : [localUser, ...state.users];
+
       return {
         ...state,
         backendUser: action.user,
         users,
       };
     }
+
     case "users/hydrate":
       return {
         ...state,
         users: action.users.reduce((acc, user) => {
-          const index = acc.findIndex((existing) => existing.id === user.id);
+          const index = acc.findIndex(
+            (existing) => existing.id === user.id,
+          );
+
           if (index >= 0) {
             const next = [...acc];
-            next[index] = { ...next[index], ...user };
+            next[index] = {
+              ...next[index],
+              ...user,
+            };
             return next;
           }
+
           return [user, ...acc];
         }, state.users),
       };
+
     case "lists/hydrate": {
       const nextLists = [...state.lists];
+
       for (const list of action.lists) {
         const index = nextLists.findIndex(
           (existing) => existing.id === list.id,
         );
-        if (index >= 0) nextLists[index] = { ...nextLists[index], ...list };
-        else nextLists.push(list);
+
+        if (index >= 0) {
+          nextLists[index] = {
+            ...nextLists[index],
+            ...list,
+          };
+        } else {
+          nextLists.push(list);
+        }
       }
-      return { ...state, lists: nextLists };
+
+      return {
+        ...state,
+        lists: nextLists,
+      };
     }
+
     case "auth/hydrate-catalog":
-      return { ...state, lists: action.lists, products: action.products };
+      return {
+        ...state,
+        lists: action.lists,
+        products: action.products,
+      };
+
     case "social/hydrate":
       return {
         ...state,
@@ -209,10 +244,12 @@ function reducer(state: State, action: Action): State {
         pendingReceived: action.pendingReceived,
         pendingSent: action.pendingSent,
       };
+
     case "social/follow-accepted": {
       const nextFollowing = state.following.filter(
         (entry) => entry.userId !== action.follow.userId,
       );
+
       return {
         ...state,
         following: [action.follow, ...nextFollowing],
@@ -224,10 +261,12 @@ function reducer(state: State, action: Action): State {
         ),
       };
     }
+
     case "social/follower-accepted": {
       const nextFollowers = state.followers.filter(
         (entry) => entry.userId !== action.follow.userId,
       );
+
       return {
         ...state,
         followers: [action.follow, ...nextFollowers],
@@ -236,24 +275,32 @@ function reducer(state: State, action: Action): State {
         ),
       };
     }
+
     case "social/request-sent": {
       const nextPendingSent = state.pendingSent.filter(
         (entry) => entry.userId !== action.follow.userId,
       );
+
       return {
         ...state,
         pendingSent: [action.follow, ...nextPendingSent],
       };
     }
+
     case "social/request-received": {
       const nextPendingReceived = state.pendingReceived.filter(
         (entry) => entry.userId !== action.follow.userId,
       );
+
       return {
         ...state,
-        pendingReceived: [action.follow, ...nextPendingReceived],
+        pendingReceived: [
+          action.follow,
+          ...nextPendingReceived,
+        ],
       };
     }
+
     case "social/unfollow":
       return {
         ...state,
@@ -261,6 +308,7 @@ function reducer(state: State, action: Action): State {
           (entry) => entry.userId !== action.userId,
         ),
       };
+
     case "social/accept-request":
       return {
         ...state,
@@ -271,6 +319,7 @@ function reducer(state: State, action: Action): State {
           (entry) => entry.userId !== action.userId,
         ),
       };
+
     case "social/cancel-request":
       return {
         ...state,
@@ -278,6 +327,7 @@ function reducer(state: State, action: Action): State {
           (entry) => entry.userId !== action.userId,
         ),
       };
+
     case "social/reject-request":
       return {
         ...state,
@@ -285,37 +335,60 @@ function reducer(state: State, action: Action): State {
           (entry) => entry.userId !== action.userId,
         ),
       };
+
     case "profile/update": {
       const currentUserId = state.backendUser?.id;
+
       if (!currentUserId) {
         return state;
       }
 
       const backendPatch: Partial<BackendUser> = {
         ...(action.patch.photo !== undefined
-          ? { avatarPath: action.patch.photo || undefined }
+          ? {
+              avatarPath:
+                action.patch.photo || undefined,
+            }
           : {}),
         ...(action.patch.address !== undefined
-          ? { address: action.patch.address || undefined }
+          ? {
+              address:
+                action.patch.address || undefined,
+            }
           : {}),
         ...(action.patch.city !== undefined
-          ? { cityState: action.patch.city || undefined }
+          ? {
+              cityState:
+                action.patch.city || undefined,
+            }
           : {}),
         ...(action.patch.zip !== undefined
-          ? { zipCode: action.patch.zip || undefined }
+          ? {
+              zipCode:
+                action.patch.zip || undefined,
+            }
           : {}),
         ...(action.patch.privacy !== undefined
-          ? { private: action.patch.privacy === "private" }
+          ? {
+              private:
+                action.patch.privacy === "private",
+            }
           : {}),
         ...(action.patch.showBirthYear !== undefined
-          ? { showBirthYear: action.patch.showBirthYear }
+          ? {
+              showBirthYear:
+                action.patch.showBirthYear,
+            }
           : {}),
       };
 
       return {
         ...state,
         backendUser: state.backendUser
-          ? { ...state.backendUser, ...backendPatch }
+          ? {
+              ...state.backendUser,
+              ...backendPatch,
+            }
           : state.backendUser,
         users: state.users.map((u) =>
           u.id === currentUserId
@@ -323,71 +396,133 @@ function reducer(state: State, action: Action): State {
                 ...u,
                 ...action.patch,
                 ...(action.patch.photo !== undefined
-                  ? { photo: action.patch.photo || undefined }
+                  ? {
+                      photo:
+                        action.patch.photo ||
+                        undefined,
+                    }
                   : {}),
                 ...(action.patch.address !== undefined
-                  ? { address: action.patch.address || undefined }
+                  ? {
+                      address:
+                        action.patch.address ||
+                        undefined,
+                    }
                   : {}),
                 ...(action.patch.city !== undefined
-                  ? { city: action.patch.city || undefined }
+                  ? {
+                      city:
+                        action.patch.city ||
+                        undefined,
+                    }
                   : {}),
                 ...(action.patch.zip !== undefined
-                  ? { zip: action.patch.zip || undefined }
+                  ? {
+                      zip:
+                        action.patch.zip ||
+                        undefined,
+                    }
                   : {}),
                 ...(action.patch.privacy !== undefined
-                  ? { privacy: action.patch.privacy }
+                  ? {
+                      privacy:
+                        action.patch.privacy,
+                    }
                   : {}),
                 ...(action.patch.showBirthYear !== undefined
-                  ? { showBirthYear: action.patch.showBirthYear }
+                  ? {
+                      showBirthYear:
+                        action.patch.showBirthYear,
+                    }
                   : {}),
               }
             : u,
         ),
       };
     }
+
     case "notifications/hydrate":
-      return { ...state, notifications: action.notifications };
+      return {
+        ...state,
+        notifications: action.notifications,
+      };
+
     case "notifications/read-one":
       return {
         ...state,
-        notifications: state.notifications.map((notification) =>
-          notification.id === action.id
-            ? { ...notification, read: true }
-            : notification,
+        notifications: state.notifications.map(
+          (notification) =>
+            notification.id === action.id
+              ? {
+                  ...notification,
+                  read: true,
+                }
+              : notification,
         ),
       };
+
     case "list/create":
-      return { ...state, lists: [action.list, ...state.lists] };
+      return {
+        ...state,
+        lists: [action.list, ...state.lists],
+      };
+
     case "list/update":
       return {
         ...state,
         lists: state.lists.map((l) =>
-          l.id === action.id ? { ...l, ...action.patch } : l,
+          l.id === action.id
+            ? { ...l, ...action.patch }
+            : l,
         ),
       };
+
     case "list/delete":
       return {
         ...state,
-        lists: state.lists.filter((l) => l.id !== action.id),
-        products: state.products.filter((p) => p.listId !== action.id),
+        lists: state.lists.filter(
+          (l) => l.id !== action.id,
+        ),
+        products: state.products.filter(
+          (p) => p.listId !== action.id,
+        ),
       };
+
     case "list/set-member":
       return {
         ...state,
         lists: state.lists.map((l) => {
-          if (l.id !== action.id) return l;
+          if (l.id !== action.id) {
+            return l;
+          }
+
           const members = l.members ?? [];
-          const exists = members.some((m) => m.userId === action.userId);
+          const exists = members.some(
+            (m) => m.userId === action.userId,
+          );
+
           return {
             ...l,
             members: exists
               ? members.map((m) =>
-                  m.userId === action.userId ? { ...m, role: action.role } : m,
+                  m.userId === action.userId
+                    ? {
+                        ...m,
+                        role: action.role,
+                      }
+                    : m,
                 )
-              : [...members, { userId: action.userId, role: action.role }],
+              : [
+                  ...members,
+                  {
+                    userId: action.userId,
+                    role: action.role,
+                  },
+                ],
           };
         }),
       };
+
     case "list/remove-member":
       return {
         ...state,
@@ -396,56 +531,98 @@ function reducer(state: State, action: Action): State {
             ? {
                 ...l,
                 members: (l.members ?? []).filter(
-                  (m) => m.userId !== action.userId,
+                  (m) =>
+                    m.userId !== action.userId,
                 ),
               }
             : l,
         ),
       };
+
     case "product/create":
-      return { ...state, products: [action.product, ...state.products] };
+      return {
+        ...state,
+        products: [
+          action.product,
+          ...state.products,
+        ],
+      };
+
     case "products/hydrate": {
       const nextProducts = [...state.products];
+
       for (const product of action.products) {
         const index = nextProducts.findIndex(
-          (existing) => existing.id === product.id,
+          (existing) =>
+            existing.id === product.id,
         );
-        if (index >= 0)
-          nextProducts[index] = { ...nextProducts[index], ...product };
-        else nextProducts.push(product);
+
+        if (index >= 0) {
+          nextProducts[index] = {
+            ...nextProducts[index],
+            ...product,
+          };
+        } else {
+          nextProducts.push(product);
+        }
       }
-      return { ...state, products: nextProducts };
+
+      return {
+        ...state,
+        products: nextProducts,
+      };
     }
+
     case "product/update":
       return {
         ...state,
         products: state.products.map((p) =>
-          p.id === action.id ? { ...p, ...action.patch } : p,
+          p.id === action.id
+            ? { ...p, ...action.patch }
+            : p,
         ),
       };
+
     case "product/delete":
       return {
         ...state,
-        products: state.products.filter((p) => p.id !== action.id),
+        products: state.products.filter(
+          (p) => p.id !== action.id,
+        ),
       };
+
     case "product/like":
       return {
         ...state,
         products: state.products.map((p) =>
           p.id === action.id
-            ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
+            ? {
+                ...p,
+                liked: !p.liked,
+                likes:
+                  p.likes +
+                  (p.liked ? -1 : 1),
+              }
             : p,
         ),
       };
+
     case "product/comment":
       return {
         ...state,
         products: state.products.map((p) =>
           p.id === action.id
-            ? { ...p, comments: [...p.comments, action.comment] }
+            ? {
+                ...p,
+                comments: [
+                  ...p.comments,
+                  action.comment,
+                ],
+              }
             : p,
         ),
       };
+
     case "product/comment-like":
       return {
         ...state,
@@ -453,21 +630,29 @@ function reducer(state: State, action: Action): State {
           p.id === action.productId
             ? {
                 ...p,
-                comments: p.comments.map((c) =>
-                  c.id === action.commentId
-                    ? {
-                        ...c,
-                        liked: !c.liked,
-                        likes: c.likes + (c.liked ? -1 : 1),
-                      }
-                    : c,
+                comments: p.comments.map(
+                  (c) =>
+                    c.id === action.commentId
+                      ? {
+                          ...c,
+                          liked: !c.liked,
+                          likes:
+                            c.likes +
+                            (c.liked
+                              ? -1
+                              : 1),
+                        }
+                      : c,
                 ),
               }
             : p,
         ),
       };
+
     case "product/reserve": {
-      const currentUserId = state.backendUser?.id;
+      const currentUserId =
+        state.backendUser?.id;
+
       if (!currentUserId) {
         return state;
       }
@@ -475,14 +660,21 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         products: state.products.map((p) =>
-          p.id === action.id && p.reservedBy === null
-            ? { ...p, reservedBy: currentUserId }
+          p.id === action.id &&
+          p.reservedBy === null
+            ? {
+                ...p,
+                reservedBy: currentUserId,
+              }
             : p,
         ),
       };
     }
+
     case "product/unreserve": {
-      const currentUserId = state.backendUser?.id;
+      const currentUserId =
+        state.backendUser?.id;
+
       if (!currentUserId) {
         return state;
       }
@@ -490,15 +682,26 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         products: state.products.map((p) =>
-          p.id === action.id && p.reservedBy === currentUserId
-            ? { ...p, reservedBy: null }
+          p.id === action.id &&
+          p.reservedBy === currentUserId
+            ? {
+                ...p,
+                reservedBy: null,
+              }
             : p,
         ),
       };
     }
+
     case "product/copy": {
-      const source = state.products.find((p) => p.id === action.id);
-      if (!source) return state;
+      const source = state.products.find(
+        (p) => p.id === action.id,
+      );
+
+      if (!source) {
+        return state;
+      }
+
       return {
         ...state,
         products: [
@@ -515,38 +718,60 @@ function reducer(state: State, action: Action): State {
         ],
       };
     }
+
     case "follower/remove":
       return {
         ...state,
         followers: state.followers.filter(
-          (entry) => entry.userId !== action.userId,
+          (entry) =>
+            entry.userId !== action.userId,
         ),
       };
+
     case "user/block":
       return {
         ...state,
-        blocked: [...state.blocked, action.userId],
+        blocked: [
+          ...state.blocked,
+          action.userId,
+        ],
         followers: state.followers.filter(
-          (entry) => entry.userId !== action.userId,
+          (entry) =>
+            entry.userId !== action.userId,
         ),
         following: state.following.filter(
-          (entry) => entry.userId !== action.userId,
+          (entry) =>
+            entry.userId !== action.userId,
         ),
       };
+
     case "circle/create":
-      return { ...state, circles: [action.circle, ...state.circles] };
+      return {
+        ...state,
+        circles: [
+          action.circle,
+          ...state.circles,
+        ],
+      };
+
     case "circle/update":
       return {
         ...state,
         circles: state.circles.map((c) =>
-          c.id === action.id ? { ...c, ...action.patch } : c,
+          c.id === action.id
+            ? { ...c, ...action.patch }
+            : c,
         ),
       };
+
     case "circle/delete":
       return {
         ...state,
-        circles: state.circles.filter((c) => c.id !== action.id),
+        circles: state.circles.filter(
+          (c) => c.id !== action.id,
+        ),
       };
+
     case "circle/toggle-member":
       return {
         ...state,
@@ -554,39 +779,77 @@ function reducer(state: State, action: Action): State {
           c.id === action.id
             ? {
                 ...c,
-                memberIds: c.memberIds.includes(action.userId)
-                  ? c.memberIds.filter((m) => m !== action.userId)
-                  : [...c.memberIds, action.userId],
+                memberIds:
+                  c.memberIds.includes(
+                    action.userId,
+                  )
+                    ? c.memberIds.filter(
+                        (m) =>
+                          m !== action.userId,
+                      )
+                    : [
+                        ...c.memberIds,
+                        action.userId,
+                      ],
               }
             : c,
         ),
       };
+
     case "message/send":
       return {
         ...state,
         threads: {
           ...state.threads,
           [action.threadKey]: [
-            ...(state.threads[action.threadKey] ?? []),
+            ...(state.threads[
+              action.threadKey
+            ] ?? []),
             action.message,
           ],
         },
       };
+
     case "reminders/set":
-      return { ...state, reminders: { ...state.reminders, ...action.patch } };
+      return {
+        ...state,
+        reminders: {
+          ...state.reminders,
+          ...action.patch,
+        },
+      };
+
     case "appearance/set-dark-mode":
-      return { ...state, darkMode: action.value };
+      return {
+        ...state,
+        darkMode: action.value,
+      };
+
     case "notifications/read-all":
       return {
         ...state,
-        notifications: state.notifications.map((n) => ({ ...n, read: true })),
+        notifications: state.notifications.map(
+          (n) => ({
+            ...n,
+            read: true,
+          }),
+        ),
       };
+
     default:
       return state;
   }
 }
 
-const fallbackEmojis = ["🎁", "✨", "🧡", "🎉", "💫", "🛍️"] as const;
+const fallbackEmojis = [
+  "🎁",
+  "✨",
+  "🧡",
+  "🎉",
+  "💫",
+  "🛍️",
+] as const;
+
 const fallbackTints: Product["tint"][] = [
   "lilac",
   "mint",
@@ -598,69 +861,244 @@ const fallbackTints: Product["tint"][] = [
 
 const listVisuals: Record<
   string,
-  { emoji: string; tint: GiftList["tint"]; category: string }
-  > = {
-    aniversário: { emoji: "🎂", tint: "rose", category: "aniversario" },
-    natal: { emoji: "🎄", tint: "mint", category: "natal" },
-    casamento: { emoji: "💍", tint: "lilac", category: "casamento" },
-    "chá de bebê": { emoji: "🍼", tint: "sky", category: "cha-de-bebe" },
-    "casa nova": { emoji: "🏡", tint: "cream", category: "casa-nova" },
-    formatura: { emoji: "🎓", tint: "lilac", category: "formatura" },
-    viagem: { emoji: "🧳", tint: "mint", category: "viagem" },
-    tecnologia: { emoji: "💻", tint: "sky", category: "tecnologia" },
-    livros: { emoji: "📚", tint: "peach", category: "livros" },
-    games: { emoji: "🎮", tint: "lilac", category: "games" },
-  };
+  {
+    emoji: string;
+    tint: GiftList["tint"];
+    category: string;
+  }
+> = {
+  aniversário: {
+    emoji: "🎂",
+    tint: "rose",
+    category: "aniversario",
+  },
+  natal: {
+    emoji: "🎄",
+    tint: "mint",
+    category: "natal",
+  },
+  casamento: {
+    emoji: "💍",
+    tint: "lilac",
+    category: "casamento",
+  },
+  "chá de bebê": {
+    emoji: "🍼",
+    tint: "sky",
+    category: "cha-de-bebe",
+  },
+  "casa nova": {
+    emoji: "🏡",
+    tint: "cream",
+    category: "casa-nova",
+  },
+  formatura: {
+    emoji: "🎓",
+    tint: "lilac",
+    category: "formatura",
+  },
+  viagem: {
+    emoji: "🧳",
+    tint: "mint",
+    category: "viagem",
+  },
+  tecnologia: {
+    emoji: "💻",
+    tint: "sky",
+    category: "tecnologia",
+  },
+  livros: {
+    emoji: "📚",
+    tint: "peach",
+    category: "livros",
+  },
+  games: {
+    emoji: "🎮",
+    tint: "lilac",
+    category: "games",
+  },
+};
 
-function toLocalList(list: BackendList): GiftList {
-  const visual = listVisuals[list.name.toLowerCase()];
+function toLocalList(
+  list: BackendList,
+  defaultOwnerId?: string,
+): GiftList {
+  const visual =
+    listVisuals[
+      list.name.toLowerCase()
+    ];
 
   return {
     id: list.id,
-    ownerId: list.ownerId,
+    ownerId: list.ownerId || defaultOwnerId || "",
     name: list.name,
-    description: list.description ?? "",
-    emoji: visual?.emoji ?? "🎁",
-    tint: visual?.tint ?? "lilac",
+    description:
+      list.description ?? "",
+    emoji:
+      visual?.emoji ?? "🎁",
+    tint:
+      visual?.tint ?? "lilac",
     privacy: list.private
       ? list.listType === "collaborative"
         ? "guests"
         : "private"
       : "public",
     paused: false,
-    category: visual?.category ?? "personalizada",
-    members: (list.members ?? []).map((member) => ({
-      userId: member.userId,
-      role: member.role,
-    })),
-    inviteMessage: list.inviteMessage,
+    category:
+      visual?.category ??
+      "personalizada",
+    members:
+      (list.members ?? []).map(
+        (member) => ({
+          userId: member.userId,
+          role: member.role,
+        }),
+      ),
+    inviteMessage:
+      list.inviteMessage,
   };
 }
 
-function parseDetailAndStore(raw?: string): { detail: string; store: string } {
-  if (!raw) return { detail: "", store: "" };
+export function isListOwner(
+  list: GiftList | BackendList,
+  user: BackendUser | null,
+): boolean {
+  if (!user || !list) {
+    return false;
+  }
+
+  const owner = (list.ownerId ?? "").trim().toLowerCase();
+  if (!owner) {
+    return true;
+  }
+
+  const userId = (user.id ?? "").trim().toLowerCase();
+  const authId = (user.authId ?? "").trim().toLowerCase();
+  const username = (user.username ?? "").trim().toLowerCase();
+  const email = (user.email ?? "").trim().toLowerCase();
+
+  return (
+    (Boolean(userId) && owner === userId) ||
+    (Boolean(authId) && owner === authId) ||
+    (Boolean(username) && owner === username) ||
+    (Boolean(email) && owner === email)
+  );
+}
+
+export function isListEditor(
+  list: GiftList,
+  user: BackendUser | null,
+): boolean {
+  if (!user || !list) {
+    return false;
+  }
+
+  if (isListOwner(list, user)) {
+    return true;
+  }
+
+  const userId = (user.id ?? "").trim().toLowerCase();
+  const authId = (user.authId ?? "").trim().toLowerCase();
+  const username = (user.username ?? "").trim().toLowerCase();
+
+  return (list.members ?? []).some((m) => {
+    const mId = (m.userId ?? "").trim().toLowerCase();
+    const matchesUser =
+      (Boolean(userId) && mId === userId) ||
+      (Boolean(authId) && mId === authId) ||
+      (Boolean(username) && mId === username);
+    return matchesUser && m.role === "edit";
+  });
+}
+
+export function isListMember(
+  list: GiftList,
+  user: BackendUser | null,
+): boolean {
+  if (!user || !list) {
+    return false;
+  }
+
+  if (isListOwner(list, user)) {
+    return true;
+  }
+
+  const userId = (user.id ?? "").trim().toLowerCase();
+  const authId = (user.authId ?? "").trim().toLowerCase();
+  const username = (user.username ?? "").trim().toLowerCase();
+
+  return (list.members ?? []).some((m) => {
+    const mId = (m.userId ?? "").trim().toLowerCase();
+    return (
+      (Boolean(userId) && mId === userId) ||
+      (Boolean(authId) && mId === authId) ||
+      (Boolean(username) && mId === username)
+    );
+  });
+}
+
+function parseDetailAndStore(
+  raw?: string,
+): {
+  detail: string;
+  store: string;
+} {
+  if (!raw) {
+    return {
+      detail: "",
+      store: "",
+    };
+  }
 
   const lines = raw
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  const storeLine = lines.find((line) =>
-    line.toLowerCase().startsWith("loja:"),
-  );
-  const store = storeLine ? storeLine.slice(5).trim() : "";
-  const detail = lines.filter((line) => line !== storeLine).join("\n");
 
-  return { detail, store };
+  const storeLine = lines.find(
+    (line) =>
+      line
+        .toLowerCase()
+        .startsWith("loja:"),
+  );
+
+  const store = storeLine
+    ? storeLine.slice(5).trim()
+    : "";
+
+  const detail = lines
+    .filter((line) => line !== storeLine)
+    .join("\n");
+
+  return {
+    detail,
+    store,
+  };
 }
 
-export function toLocalProduct(item: BackendItem, listId: string): Product {
-  const parsed = parseDetailAndStore(item.description);
+export function toLocalProduct(
+  item: BackendItem,
+  listId: string,
+): Product {
+  const parsed =
+    parseDetailAndStore(
+      item.description,
+    );
+
   const status = item.status;
+
   const fallbackTint =
-    fallbackTints[(item.id.length + listId.length) % fallbackTints.length]!;
+    fallbackTints[
+      (item.id.length +
+        listId.length) %
+        fallbackTints.length
+    ]!;
+
   const fallbackEmoji =
     fallbackEmojis[
-      (item.id.length + item.title.length) % fallbackEmojis.length
+      (item.id.length +
+        item.title.length) %
+        fallbackEmojis.length
     ]!;
 
   return {
@@ -669,11 +1107,16 @@ export function toLocalProduct(item: BackendItem, listId: string): Product {
     name: item.title,
     store: parsed.store,
     detail: parsed.detail,
-    price: Number(item.priceAmount ?? "0") || 0,
-    link: item.externalUrl ?? "",
+    price:
+      Number(item.priceAmount ?? "0") ||
+      0,
+    link:
+      item.externalUrl ?? "",
     note: "",
     emoji: fallbackEmoji,
-    image: item.imageUrl ?? item.imageExternalUrl,
+    image:
+      item.imageUrl ??
+      item.imageExternalUrl,
     tint: fallbackTint,
     priority:
       item.priority === "HIGH"
@@ -686,7 +1129,8 @@ export function toLocalProduct(item: BackendItem, listId: string): Product {
     liked: false,
     comments: [],
     reservedBy: null,
-    paused: status === "ARCHIVED",
+    paused:
+      status === "ARCHIVED",
     archived: false,
   };
 }
@@ -698,18 +1142,35 @@ type Store = {
   backendUser: BackendUser | null;
   me: User | null;
   refreshSession: () => Promise<void>;
-  userById: (id: string) => User | undefined;
-  userByUsername: (username: string) => User | undefined;
-  listById: (id: string) => GiftList | undefined;
-  productById: (id: string) => Product | undefined;
-  listsOf: (userId: string, onlyPublic?: boolean) => GiftList[];
-  productsOf: (listId: string) => Product[];
+  userById: (
+    id: string,
+  ) => User | undefined;
+  userByUsername: (
+    username: string,
+  ) => User | undefined;
+  listById: (
+    id: string,
+  ) => GiftList | undefined;
+  productById: (
+    id: string,
+  ) => Product | undefined;
+  listsOf: (
+    userId: string,
+    onlyPublic?: boolean,
+  ) => GiftList[];
+  productsOf: (
+    listId: string,
+  ) => Product[];
   myLists: GiftList[];
   accessibleLists: GiftList[];
   editableLists: GiftList[];
   reserved: Product[];
-  isFollowing: (userId: string) => boolean;
-  isConnected: (userId: string) => boolean;
+  isFollowing: (
+    userId: string,
+  ) => boolean;
+  isConnected: (
+    userId: string,
+  ) => boolean;
   followStateForUser: (
     userId: string,
   ) =>
@@ -717,14 +1178,28 @@ type Store = {
     | "PENDING_SENT"
     | "PENDING_RECEIVED"
     | BackendFollowLink["status"];
-  followIdForUser: (userId: string) => string | undefined;
-  followUser: (userId: string) => Promise<void>;
-  unfollowUser: (userId: string) => Promise<void>;
-  acceptFollowRequest: (userId: string) => Promise<void>;
-  cancelFollowRequest: (userId: string) => Promise<void>;
-  rejectFollowRequest: (userId: string) => Promise<void>;
+  followIdForUser: (
+    userId: string,
+  ) => string | undefined;
+  followUser: (
+    userId: string,
+  ) => Promise<void>;
+  unfollowUser: (
+    userId: string,
+  ) => Promise<void>;
+  acceptFollowRequest: (
+    userId: string,
+  ) => Promise<void>;
+  cancelFollowRequest: (
+    userId: string,
+  ) => Promise<void>;
+  rejectFollowRequest: (
+    userId: string,
+  ) => Promise<void>;
   readAllNotifications: () => Promise<void>;
-  readNotification: (id: string) => Promise<void>;
+  readNotification: (
+    id: string,
+  ) => Promise<void>;
   acceptListInvite: (
     notificationId: string,
     listId: string,
@@ -735,178 +1210,477 @@ type Store = {
     listId: string,
     role?: ListRole,
   ) => Promise<void>;
-  thread: (key: string) => ChatMessage[];
-  newId: (prefix: string) => string;
+  thread: (
+    key: string,
+  ) => ChatMessage[];
+  newId: (
+    prefix: string,
+  ) => string;
 };
 
-const StoreContext = createContext<Store | null>(null);
+const StoreContext =
+  createContext<Store | null>(null);
 
-export function WishboxProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const [authReady, setAuthReady] = useState(() => !auth);
-  const mountedRef = useRef(true);
-  const sessionGenRef = useRef(0);
+export function WishboxProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [state, dispatch] =
+    useReducer(
+      reducer,
+      initialState,
+    );
+
+  const [authReady, setAuthReady] =
+    useState(false);
+
+  const mountedRef =
+    useRef(true);
+
+  const sessionGenRef =
+    useRef(0);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", state.darkMode);
+    document.documentElement.classList.toggle(
+      "dark",
+      state.darkMode,
+    );
   }, [state.darkMode]);
 
-  const syncSession = useCallback(
-    async (firebaseUser: FirebaseAuthUser | null) => {
-      const generation = ++sessionGenRef.current;
-      const stale = () =>
-        !mountedRef.current || generation !== sessionGenRef.current;
+  const syncSession =
+    useCallback(
+      async (
+        firebaseUser: FirebaseAuthUser | null,
+      ) => {
+        const generation =
+          ++sessionGenRef.current;
 
-      if (!firebaseUser) {
-        dispatch({ type: "auth/logout" });
-        if (!stale()) setAuthReady(true);
-        return;
-      }
+        const stale = () =>
+          !mountedRef.current ||
+          generation !==
+            sessionGenRef.current;
 
-      // Block protected screens until the backend profile exists. Otherwise login
-      // flips `authed` while `me` is still undefined and Home crashes.
-      setAuthReady(false);
-      dispatch({ type: "auth/login" });
+        if (!firebaseUser) {
+          dispatch({
+            type: "auth/logout",
+          });
 
-      try {
-        const backendUser = await ensureBackendUserSession(firebaseUser);
-        if (stale()) return;
-        dispatch({ type: "auth/set-backend-user", user: backendUser });
-      
-        const token = await firebaseUser.getIdToken();
+          if (!stale()) {
+            setAuthReady(true);
+          }
 
-        const [catalog, socialGraph] = await Promise.all([
-          fetchBackendCatalog(token),
-          fetchBackendFollowRequests(token),
-        ]);
-        
-        const relatedUserIds = new Set(
-          [
-            ...socialGraph.following,
-            ...socialGraph.followers,
-            ...socialGraph.requestsReceived,
-            ...socialGraph.requestsSent,
-          ].map((entry) => entry.userId),
-        );
-        const relatedUsers = await Promise.all(
-          [...relatedUserIds]
-            .filter((userId) => userId !== backendUser.id)
-            .map((userId) => fetchBackendUser(token, userId)),
-        );
-        const backendNotifications = await fetchBackendNotifications(token);
-        if (stale()) return;
+          return;
+        }
 
-        const localUsers = relatedUsers.map(backendUserToLocalUser);
-        const userLookup = new Map(localUsers.map((user) => [user.id, user]));
-
-        dispatch({ type: "users/hydrate", users: localUsers });
+        setAuthReady(false);
 
         dispatch({
-          type: "social/hydrate",
-          following: socialGraph.following,
-          followers: socialGraph.followers,
-          pendingReceived: socialGraph.requestsReceived,
-          pendingSent: socialGraph.requestsSent,
+          type: "auth/login",
         });
 
-        dispatch({
-          type: "notifications/hydrate",
-          notifications: backendNotifications
-            .filter((notification) => {
-              if (notification.type !== "follow") return true;
-              const actorId = notification.actorId;
-              return Boolean(
-                actorId &&
+        try {
+          const backendUser =
+            await ensureBackendUserSession(
+              firebaseUser,
+            );
+
+          if (stale()) {
+            return;
+          }
+
+          dispatch({
+            type: "auth/set-backend-user",
+            user: backendUser,
+          });
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          /*
+           * O catálogo é essencial para telas como
+           * "Adicionar produto". Ele não pode depender
+           * de notificações, seguidores ou usuários
+           * relacionados.
+           */
+          let catalog:
+            | Awaited<
+                ReturnType<
+                  typeof fetchBackendCatalog
+                >
+              >
+            | null = null;
+
+          try {
+            catalog =
+              await fetchBackendCatalog(
+                token,
+                backendUser.id,
+              );
+          } catch (error) {
+            if (
+              process.env.NODE_ENV !==
+              "production"
+            ) {
+              console.warn(
+                "[auth] catalog bootstrap failed",
+                error,
+              );
+            }
+          }
+
+          if (stale()) {
+            return;
+          }
+
+          /*
+           * Hidrata listas/produtos imediatamente.
+           * Assim, uma falha em social/notificações
+           * não bloqueia o catálogo.
+           */
+          if (catalog) {
+            const mappedLists =
+              await Promise.all(
+                catalog.lists.map(
+                  async (list) => {
+                    const localList =
+                      toLocalList(list, backendUser.id);
+
+                    if (
+                      list.listType !==
+                      "collaborative"
+                    ) {
+                      return localList;
+                    }
+
+                    try {
+                      const editorIds =
+                        await fetchListEditors(
+                          token,
+                          list.id,
+                        );
+
+                      const members =
+                        new Map(
+                          (
+                            localList.members ??
+                            []
+                          ).map(
+                            (member) => [
+                              member.userId,
+                              member.role,
+                            ],
+                          ),
+                        );
+
+                      editorIds.forEach(
+                        (userId) =>
+                          members.set(
+                            userId,
+                            "edit",
+                          ),
+                      );
+
+                      return {
+                        ...localList,
+                        members: [
+                          ...members.entries(),
+                        ].map(
+                          ([
+                            userId,
+                            role,
+                          ]) => ({
+                            userId,
+                            role,
+                          }),
+                        ),
+                      };
+                    } catch {
+                      return localList;
+                    }
+                  },
+                ),
+              );
+
+            const mappedProducts =
+              catalog.lists.flatMap(
+                (list) =>
+                  (
+                    catalog.itemsByList[
+                      list.id
+                    ] ?? []
+                  ).map((item) =>
+                    toLocalProduct(
+                      item,
+                      list.id,
+                    ),
+                  ),
+              );
+
+            dispatch({
+              type:
+                "auth/hydrate-catalog",
+              lists: mappedLists,
+              products:
+                mappedProducts,
+            });
+          }
+
+          /*
+           * Social e notificações são
+           * independentes do catálogo.
+           */
+          try {
+            const socialGraph =
+              await fetchBackendFollowRequests(
+                token,
+              );
+
+            if (stale()) {
+              return;
+            }
+
+            const relatedUserIds =
+              new Set(
                 [
+                  ...socialGraph.following,
                   ...socialGraph.followers,
                   ...socialGraph.requestsReceived,
-                ].some((entry) => entry.userId === actorId),
-              );
-            })
-            .map((notification) =>
-              backendNotificationToLocalNotification(
-                notification,
-                userLookup.get(notification.actorId ?? "")?.name,
-                socialGraph.requestsReceived.some(
-                  (entry) => entry.userId === notification.actorId,
+                  ...socialGraph.requestsSent,
+                ].map(
+                  (entry) =>
+                    entry.userId,
                 ),
-              ),
-            ),
-        });
+              );
 
-        const mappedLists = await Promise.all(
-          catalog.lists.map(async (list) => {
-            const localList = toLocalList(list);
-            if (list.listType !== "collaborative") return localList;
+            let relatedUsers: BackendUser[] =
+              [];
 
             try {
-              const editorIds = await fetchListEditors(token, list.id);
-              const members = new Map(
-                (localList.members ?? []).map((member) => [
-                  member.userId,
-                  member.role,
-                ]),
-              );
-              editorIds.forEach((userId) => members.set(userId, "edit"));
-
-              return {
-                ...localList,
-                members: [...members.entries()].map(([userId, role]) => ({
-                  userId,
-                  role,
-                })),
-              };
-            } catch {
-              return localList;
+              relatedUsers =
+                await Promise.all(
+                  [
+                    ...relatedUserIds,
+                  ]
+                    .filter(
+                      (userId) =>
+                        userId !==
+                        backendUser.id,
+                    )
+                    .map((userId) =>
+                      fetchBackendUser(
+                        token,
+                        userId,
+                      ),
+                    ),
+                );
+            } catch (error) {
+              if (
+                process.env.NODE_ENV !==
+                "production"
+              ) {
+                console.warn(
+                  "[auth] related users bootstrap failed",
+                  error,
+                );
+              }
             }
-          }),
-        );
-        const mappedProducts = catalog.lists.flatMap((list) =>
-          (catalog.itemsByList[list.id] ?? []).map((item) =>
-            toLocalProduct(item, list.id),
-          ),
-        );
 
-        dispatch({
-          type: "auth/hydrate-catalog",
-          lists: mappedLists,
-          products: mappedProducts,
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-          if (error instanceof ApiError) {
-            console.warn("[auth] backend bootstrap failed", {
-              status: error.status,
-              message: error.message,
-              body: error.body,
+            if (stale()) {
+              return;
+            }
+
+            dispatch({
+              type: "users/hydrate",
+              users: relatedUsers.map(
+                backendUserToLocalUser,
+              ),
             });
-          } else {
-            console.warn("[auth] backend bootstrap failed", error);
+
+            dispatch({
+              type: "social/hydrate",
+              following:
+                socialGraph.following,
+              followers:
+                socialGraph.followers,
+              pendingReceived:
+                socialGraph.requestsReceived,
+              pendingSent:
+                socialGraph.requestsSent,
+            });
+
+            try {
+              const backendNotifications =
+                await fetchBackendNotifications(
+                  token,
+                );
+
+              if (stale()) {
+                return;
+              }
+
+              const localUsers =
+                relatedUsers.map(
+                  backendUserToLocalUser,
+                );
+
+              const userLookup =
+                new Map(
+                  localUsers.map(
+                    (user) => [
+                      user.id,
+                      user,
+                    ],
+                  ),
+                );
+
+              dispatch({
+                type:
+                  "notifications/hydrate",
+                notifications:
+                  backendNotifications
+                    .filter(
+                      (
+                        notification,
+                      ) => {
+                        if (
+                          notification.type !==
+                          "follow"
+                        ) {
+                          return true;
+                        }
+
+                        const actorId =
+                          notification.actorId;
+
+                        return Boolean(
+                          actorId &&
+                            [
+                              ...socialGraph.followers,
+                              ...socialGraph.requestsReceived,
+                            ].some(
+                              (entry) =>
+                                entry.userId ===
+                                actorId,
+                            ),
+                        );
+                      },
+                    )
+                    .map(
+                      (
+                        notification,
+                      ) =>
+                        backendNotificationToLocalNotification(
+                          notification,
+                          userLookup.get(
+                            notification.actorId ??
+                              "",
+                          )?.name,
+                          socialGraph.requestsReceived.some(
+                            (entry) =>
+                              entry.userId ===
+                              notification.actorId,
+                          ),
+                        ),
+                    ),
+              });
+            } catch (error) {
+              if (
+                process.env.NODE_ENV !==
+                "production"
+              ) {
+                console.warn(
+                  "[auth] notifications bootstrap failed",
+                  error,
+                );
+              }
+            }
+          } catch (error) {
+            if (
+              process.env.NODE_ENV !==
+              "production"
+            ) {
+              if (
+                error instanceof ApiError
+              ) {
+                console.warn(
+                  "[auth] social bootstrap failed",
+                  {
+                    status:
+                      error.status,
+                    message:
+                      error.message,
+                    body: error.body,
+                  },
+                );
+              } else {
+                console.warn(
+                  "[auth] social bootstrap failed",
+                  error,
+                );
+              }
+            }
+          }
+        } catch (error) {
+          if (
+            process.env.NODE_ENV !==
+            "production"
+          ) {
+            if (
+              error instanceof ApiError
+            ) {
+              console.warn(
+                "[auth] backend bootstrap failed",
+                {
+                  status: error.status,
+                  message:
+                    error.message,
+                  body: error.body,
+                },
+              );
+            } else {
+              console.warn(
+                "[auth] backend bootstrap failed",
+                error,
+              );
+            }
+          }
+        } finally {
+          if (!stale()) {
+            setAuthReady(true);
           }
         }
-        // Keep Firebase session alive even if backend bootstrap fails.
-        // This avoids redirect loops to login when API environment is unavailable or misconfigured.
-      } finally {
-        if (!stale()) setAuthReady(true);
-      }
-    },
-    [],
-  );
+      },
+      [],
+    );
 
-  const refreshSession = useCallback(async () => {
-    await syncSession(auth?.currentUser ?? null);
-  }, [syncSession]);
+  const refreshSession =
+    useCallback(async () => {
+      await syncSession(
+        auth?.currentUser ?? null,
+      );
+    }, [syncSession]);
 
   useEffect(() => {
     mountedRef.current = true;
 
     if (!auth) {
+      // Firebase not configured: no external subscription to attach, so
+      // this one-time flag flip on mount is safe despite the lint rule.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthReady(true);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      void syncSession(firebaseUser);
-    });
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        (firebaseUser) => {
+          void syncSession(
+            firebaseUser,
+          );
+        },
+      );
 
     return () => {
       mountedRef.current = false;
@@ -914,248 +1688,552 @@ export function WishboxProvider({ children }: { children: ReactNode }) {
     };
   }, [syncSession]);
 
-  const value = useMemo<Store>(() => {
-    const userById = (id: string) => state.users.find((u) => u.id === id);
-    const listById = (id: string) => state.lists.find((l) => l.id === id);
-    const followStateForUser = (userId: string) => {
-      if (state.pendingReceived.some((entry) => entry.userId === userId))
-        return "PENDING_RECEIVED";
-      if (state.following.some((entry) => entry.userId === userId))
-        return "ACCEPTED";
-      if (state.pendingSent.some((entry) => entry.userId === userId))
-        return "PENDING_SENT";
-      return "none";
-    };
-    const isConnected = (userId: string) =>
-      state.following.some((entry) => entry.userId === userId) ||
-      state.followers.some((entry) => entry.userId === userId);
-    const followIdForUser = (userId: string) =>
-      state.following.find((entry) => entry.userId === userId)?.followId ??
-      state.pendingSent.find((entry) => entry.userId === userId)?.followId ??
-      state.pendingReceived.find((entry) => entry.userId === userId)?.followId;
+  const value =
+    useMemo<Store>(() => {
+      const userById = (
+        id: string,
+      ) =>
+        state.users.find(
+          (u) => u.id === id,
+        );
 
-    const followUser = async (userId: string) => {
-      const firebaseUser = auth?.currentUser;
-      if (!firebaseUser || !state.backendUser) {
-        throw new Error("Sessão indisponível para seguir usuário.");
-      }
+      const listById = (
+        id: string,
+      ) =>
+        state.lists.find(
+          (l) => l.id === id,
+        );
 
-      const token = await firebaseUser.getIdToken();
-      const follow = await createFollow(token, userId);
-      const followLink = {
-        userId: follow.followingId,
-        followId: follow.id,
-        status: follow.status,
+      const followStateForUser = (
+        userId: string,
+      ) => {
+        if (
+          state.pendingReceived.some(
+            (entry) =>
+              entry.userId ===
+              userId,
+          )
+        ) {
+          return "PENDING_RECEIVED";
+        }
+
+        if (
+          state.following.some(
+            (entry) =>
+              entry.userId ===
+              userId,
+          )
+        ) {
+          return "ACCEPTED";
+        }
+
+        if (
+          state.pendingSent.some(
+            (entry) =>
+              entry.userId ===
+              userId,
+          )
+        ) {
+          return "PENDING_SENT";
+        }
+
+        return "none";
       };
 
-      dispatch({
-        type:
-          follow.status === "ACCEPTED"
-            ? "social/follow-accepted"
-            : "social/request-sent",
-        follow: followLink,
-      });
-    };
-
-    const unfollowUser = async (userId: string) => {
-      const firebaseUser = auth?.currentUser;
-      const followId = followIdForUser(userId);
-      if (!firebaseUser || !followId) {
-        throw new Error("Não foi possível identificar o follow para remoção.");
-      }
-
-      const token = await firebaseUser.getIdToken();
-      await deleteFollow(token, followId);
-      dispatch({ type: "social/unfollow", userId });
-    };
-
-    const acceptFollowRequest = async (userId: string) => {
-      const firebaseUser = auth?.currentUser;
-      const followId = state.pendingReceived.find(
-        (entry) => entry.userId === userId,
-      )?.followId;
-      if (!firebaseUser || !followId) {
-        throw new Error(
-          "Não foi possível identificar a solicitação para aceitar.",
+      const isConnected = (
+        userId: string,
+      ) =>
+        state.following.some(
+          (entry) =>
+            entry.userId === userId,
+        ) ||
+        state.followers.some(
+          (entry) =>
+            entry.userId === userId,
         );
-      }
 
-      const token = await firebaseUser.getIdToken();
-      const follow = await acceptFollow(token, followId);
-      dispatch({
-        type: "social/follower-accepted",
-        follow: {
-          userId: follow.followerId,
+      const followIdForUser = (
+        userId: string,
+      ) =>
+        state.following.find(
+          (entry) =>
+            entry.userId === userId,
+        )?.followId ??
+        state.pendingSent.find(
+          (entry) =>
+            entry.userId === userId,
+        )?.followId ??
+        state.pendingReceived.find(
+          (entry) =>
+            entry.userId === userId,
+        )?.followId;
+
+      const followUser = async (
+        userId: string,
+      ) => {
+        const firebaseUser =
+          auth?.currentUser;
+
+        if (
+          !firebaseUser ||
+          !state.backendUser
+        ) {
+          throw new Error(
+            "Sessão indisponível para seguir usuário.",
+          );
+        }
+
+        const token =
+          await firebaseUser.getIdToken();
+
+        const follow =
+          await createFollow(
+            token,
+            userId,
+          );
+
+        const followLink = {
+          userId:
+            follow.followingId,
           followId: follow.id,
           status: follow.status,
-        },
-      });
-    };
+        };
 
-    const cancelFollowRequest = async (userId: string) => {
-      const firebaseUser = auth?.currentUser;
-      const followId = state.pendingSent.find(
-        (entry) => entry.userId === userId,
-      )?.followId;
-      if (!firebaseUser || !followId) {
-        throw new Error(
-          "Não foi possível identificar a solicitação para cancelar.",
+        dispatch({
+          type:
+            follow.status ===
+            "ACCEPTED"
+              ? "social/follow-accepted"
+              : "social/request-sent",
+          follow: followLink,
+        });
+      };
+
+      const unfollowUser = async (
+        userId: string,
+      ) => {
+        const firebaseUser =
+          auth?.currentUser;
+
+        const followId =
+          followIdForUser(
+            userId,
+          );
+
+        if (
+          !firebaseUser ||
+          !followId
+        ) {
+          throw new Error(
+            "Não foi possível identificar o follow para remoção.",
+          );
+        }
+
+        const token =
+          await firebaseUser.getIdToken();
+
+        await deleteFollow(
+          token,
+          followId,
         );
-      }
 
-      const token = await firebaseUser.getIdToken();
-      await cancelSentFollowRequest(token, followId);
-      dispatch({ type: "social/cancel-request", userId });
-    };
+        dispatch({
+          type: "social/unfollow",
+          userId,
+        });
+      };
 
-    const rejectFollowRequest = async (userId: string) => {
-      const firebaseUser = auth?.currentUser;
-      const followId = state.pendingReceived.find(
-        (entry) => entry.userId === userId,
-      )?.followId;
-      if (!firebaseUser || !followId) {
-        throw new Error(
-          "Não foi possível identificar a solicitação para recusar.",
-        );
-      }
+      const acceptFollowRequest =
+        async (userId: string) => {
+          const firebaseUser =
+            auth?.currentUser;
 
-      const token = await firebaseUser.getIdToken();
-      await deleteFollow(token, followId);
-      dispatch({ type: "social/reject-request", userId });
-    };
+          const followId =
+            state.pendingReceived.find(
+              (entry) =>
+                entry.userId ===
+                userId,
+            )?.followId;
 
-    const readAllNotifications = async () => {
-      const firebaseUser = auth?.currentUser;
-      if (!firebaseUser) {
-        throw new Error("Sessão indisponível para atualizar notificações.");
-      }
+          if (
+            !firebaseUser ||
+            !followId
+          ) {
+            throw new Error(
+              "Não foi possível identificar a solicitação para aceitar.",
+            );
+          }
 
-      const token = await firebaseUser.getIdToken();
-      await markAllNotificationsRead(token);
-      dispatch({ type: "notifications/read-all" });
-    };
+          const token =
+            await firebaseUser.getIdToken();
 
-    const readNotification = async (id: string) => {
-      const firebaseUser = auth?.currentUser;
-      if (!firebaseUser) {
-        throw new Error("Sessão indisponível para atualizar notificações.");
-      }
+          const follow =
+            await acceptFollow(
+              token,
+              followId,
+            );
 
-      const token = await firebaseUser.getIdToken();
-      await markNotificationRead(token, id);
-      dispatch({ type: "notifications/read-one", id });
-    };
+          dispatch({
+            type:
+              "social/follower-accepted",
+            follow: {
+              userId:
+                follow.followerId,
+              followId: follow.id,
+              status:
+                follow.status,
+            },
+          });
+        };
 
-    const acceptListInvite = async (
-      notificationId: string,
-      listId: string,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      _role: ListRole = "view",
-    ) => {
-      const firebaseUser = auth?.currentUser;
-      if (!firebaseUser || !state.backendUser) {
-        throw new Error("Sessão indisponível para responder ao convite.");
-      }
+      const cancelFollowRequest =
+        async (userId: string) => {
+          const firebaseUser =
+            auth?.currentUser;
 
-      const token = await firebaseUser.getIdToken();
-      await markNotificationRead(token, notificationId);
-      dispatch({ type: "notifications/read-one", id: notificationId });
-      await refreshSession();
-    };
+          const followId =
+            state.pendingSent.find(
+              (entry) =>
+                entry.userId ===
+                userId,
+            )?.followId;
 
-    const declineListInvite = async (
-      notificationId: string,
-      listId: string,
-      role: ListRole = "view",
-    ) => {
-      const firebaseUser = auth?.currentUser;
-      if (!firebaseUser || !state.backendUser) {
-        throw new Error("Sessão indisponível para responder ao convite.");
-      }
+          if (
+            !firebaseUser ||
+            !followId
+          ) {
+            throw new Error(
+              "Não foi possível identificar a solicitação para cancelar.",
+            );
+          }
 
-      const token = await firebaseUser.getIdToken();
-      if (role === "edit")
-        await removeListEditor(token, listId, state.backendUser.id);
-      else await removeListShare(token, listId, state.backendUser.id);
+          const token =
+            await firebaseUser.getIdToken();
 
-      await markNotificationRead(token, notificationId);
-      dispatch({
-        type: "list/remove-member",
-        id: listId,
-        userId: state.backendUser.id,
-      });
-      dispatch({ type: "notifications/read-one", id: notificationId });
-      await refreshSession();
-    };
+          await cancelSentFollowRequest(
+            token,
+            followId,
+          );
 
-    return {
+          dispatch({
+            type:
+              "social/cancel-request",
+            userId,
+          });
+        };
+
+      const rejectFollowRequest =
+        async (userId: string) => {
+          const firebaseUser =
+            auth?.currentUser;
+
+          const followId =
+            state.pendingReceived.find(
+              (entry) =>
+                entry.userId ===
+                userId,
+            )?.followId;
+
+          if (
+            !firebaseUser ||
+            !followId
+          ) {
+            throw new Error(
+              "Não foi possível identificar a solicitação para recusar.",
+            );
+          }
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          await deleteFollow(
+            token,
+            followId,
+          );
+
+          dispatch({
+            type:
+              "social/reject-request",
+            userId,
+          });
+        };
+
+      const readAllNotifications =
+        async () => {
+          const firebaseUser =
+            auth?.currentUser;
+
+          if (!firebaseUser) {
+            throw new Error(
+              "Sessão indisponível para atualizar notificações.",
+            );
+          }
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          await markAllNotificationsRead(
+            token,
+          );
+
+          dispatch({
+            type:
+              "notifications/read-all",
+          });
+        };
+
+      const readNotification =
+        async (id: string) => {
+          const firebaseUser =
+            auth?.currentUser;
+
+          if (!firebaseUser) {
+            throw new Error(
+              "Sessão indisponível para atualizar notificações.",
+            );
+          }
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          await markNotificationRead(
+            token,
+            id,
+          );
+
+          dispatch({
+            type:
+              "notifications/read-one",
+            id,
+          });
+        };
+
+      const acceptListInvite =
+        async (
+          notificationId: string,
+          listId: string,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          _role: ListRole = "view",
+        ) => {
+          const firebaseUser =
+            auth?.currentUser;
+
+          if (
+            !firebaseUser ||
+            !state.backendUser
+          ) {
+            throw new Error(
+              "Sessão indisponível para responder ao convite.",
+            );
+          }
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          await markNotificationRead(
+            token,
+            notificationId,
+          );
+
+          dispatch({
+            type:
+              "notifications/read-one",
+            id: notificationId,
+          });
+
+          await refreshSession();
+        };
+
+      const declineListInvite =
+        async (
+          notificationId: string,
+          listId: string,
+          role: ListRole = "view",
+        ) => {
+          const firebaseUser =
+            auth?.currentUser;
+
+          if (
+            !firebaseUser ||
+            !state.backendUser
+          ) {
+            throw new Error(
+              "Sessão indisponível para responder ao convite.",
+            );
+          }
+
+          const token =
+            await firebaseUser.getIdToken();
+
+          if (role === "edit") {
+            await removeListEditor(
+              token,
+              listId,
+              state.backendUser.id,
+            );
+          } else {
+            await removeListShare(
+              token,
+              listId,
+              state.backendUser.id,
+            );
+          }
+
+          await markNotificationRead(
+            token,
+            notificationId,
+          );
+
+          dispatch({
+            type:
+              "list/remove-member",
+            id: listId,
+            userId:
+              state.backendUser.id,
+          });
+
+          dispatch({
+            type:
+              "notifications/read-one",
+            id: notificationId,
+          });
+
+          await refreshSession();
+        };
+
+      return {
+        state,
+        dispatch,
+        authReady,
+        backendUser:
+          state.backendUser,
+        me: state.backendUser
+          ? backendUserToLocalUser(
+              state.backendUser,
+            )
+          : null,
+        refreshSession,
+        userById,
+        userByUsername: (
+          username,
+        ) =>
+          state.users.find(
+            (u) =>
+              u.username.toLowerCase() ===
+              username.toLowerCase(),
+          ),
+        listById,
+        productById: (id) =>
+          state.products.find(
+            (p) => p.id === id,
+          ),
+        listsOf: (
+          userId,
+          onlyPublic = false,
+        ) =>
+          state.lists.filter(
+            (l) =>
+              l.ownerId === userId &&
+              (!onlyPublic ||
+                l.privacy ===
+                  "public") &&
+              (!l.paused ||
+                userId ===
+                  state.backendUser?.id),
+          ),
+        productsOf: (listId) =>
+          state.products.filter(
+            (p) =>
+              p.listId === listId &&
+              !p.archived,
+          ),
+        myLists: state.backendUser
+          ? state.lists.filter((l) => isListOwner(l, state.backendUser))
+          : [],
+        accessibleLists: state.backendUser
+          ? state.lists
+          : [],
+
+        /*
+         * O usuário pode adicionar produtos:
+         * - às próprias listas;
+         * - às listas colaborativas onde possui
+         *   permissão de edição.
+         */
+        editableLists: state.backendUser
+          ? state.lists.filter((l) => isListEditor(l, state.backendUser))
+          : [],
+
+        reserved: state.backendUser
+          ? state.products.filter(
+              (p) =>
+                p.reservedBy ===
+                state.backendUser!.id,
+            )
+          : [],
+
+        isFollowing: (userId) =>
+          followStateForUser(
+            userId,
+          ) === "ACCEPTED",
+
+        isConnected,
+
+        followStateForUser,
+
+        followIdForUser,
+
+        followUser,
+
+        unfollowUser,
+
+        acceptFollowRequest,
+
+        cancelFollowRequest,
+
+        rejectFollowRequest,
+
+        readAllNotifications,
+
+        readNotification,
+
+        acceptListInvite,
+
+        declineListInvite,
+
+        thread: (key) =>
+          state.threads[key] ?? [],
+
+        newId: (prefix) =>
+          `${prefix}-${Math.random()
+            .toString(36)
+            .slice(2, 9)}`,
+      };
+    }, [
       state,
-      dispatch,
       authReady,
-      backendUser: state.backendUser,
-      me: state.backendUser ? backendUserToLocalUser(state.backendUser) : null,
       refreshSession,
-      userById,
-      userByUsername: (username) =>
-        state.users.find(
-          (u) => u.username.toLowerCase() === username.toLowerCase(),
-        ),
-      listById,
-      productById: (id) => state.products.find((p) => p.id === id),
-      listsOf: (userId, onlyPublic = false) =>
-        state.lists.filter(
-          (l) =>
-            l.ownerId === userId &&
-            (!onlyPublic || l.privacy === "public") &&
-            (!l.paused || userId === state.backendUser?.id),
-        ),
-      productsOf: (listId) =>
-        state.products.filter((p) => p.listId === listId && !p.archived),
-      myLists: state.backendUser
-        ? state.lists.filter((l) => l.ownerId === state.backendUser!.id)
-        : [],
-      accessibleLists: state.backendUser ? state.lists : [],
-      editableLists: state.backendUser
-        ? state.lists.filter(
-            (list) =>
-              list.ownerId === state.backendUser!.id ||
-              (list.members ?? []).some(
-                (member) =>
-                  member.userId === state.backendUser!.id &&
-                  member.role === "edit",
-              ),
-          )
-        : [],
-      reserved: state.backendUser
-        ? state.products.filter((p) => p.reservedBy === state.backendUser!.id)
-        : [],
-      isFollowing: (userId) => followStateForUser(userId) === "ACCEPTED",
-      isConnected,
-      followStateForUser,
-      followIdForUser,
-      followUser,
-      unfollowUser,
-      acceptFollowRequest,
-      cancelFollowRequest,
-      rejectFollowRequest,
-      readAllNotifications,
-      readNotification,
-      acceptListInvite,
-      declineListInvite,
-      thread: (key) => state.threads[key] ?? [],
-      newId: (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`,
-    };
-  }, [state, authReady, refreshSession]);
+    ]);
 
   return (
-    <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+    <StoreContext.Provider
+      value={value}
+    >
+      {children}
+    </StoreContext.Provider>
   );
 }
 
 export function useWishbox() {
-  const ctx = useContext(StoreContext);
-  if (!ctx)
-    throw new Error("useWishbox precisa estar dentro de WishboxProvider");
+  const ctx =
+    useContext(StoreContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useWishbox precisa estar dentro de WishboxProvider",
+    );
+  }
+
   return ctx;
 }
 

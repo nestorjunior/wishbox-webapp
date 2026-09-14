@@ -40,7 +40,7 @@ export function Field({
   return (
     <label className="flex flex-col gap-1.5">
       {label ? (
-        <span className="text-[13px] font-semibold text-(--foreground)">
+        <span className="text-[13px] font-semibold text-foreground">
           {label}
         </span>
       ) : null}
@@ -66,7 +66,7 @@ export function Field({
           <select
             {...(props as SelectHTMLAttributes<HTMLSelectElement>)}
             className={cn(
-              "h-full flex-1 appearance-none bg-transparent px-3.5 text-sm text-foreground focus:outline-none",
+              "h-full flex-1 appearance-none bg-transparent px-3.5 text-sm text-foreground focus:outline-none [&>option]:bg-card [&>option]:text-foreground",
               className,
             )}
           >

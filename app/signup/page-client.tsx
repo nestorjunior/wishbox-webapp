@@ -2,20 +2,38 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button, Card, Field, Toggle } from "@/components/ui";
 import { FormHeader } from "@/components/FormHeader";
 import { Screen } from "@/components/Screen";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
+import { normalizeUsername } from "@/lib/username";
+import {
+  clearPendingSignupProfile,
+  setPendingSignupProfile,
+  setWelcomeToastVisible,
+} from "@/lib/api";
+
+function formatBirthDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length < 2) return digits;
+  if (digits.length < 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [showBirthYear, setShowBirthYear] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [gender, setGender] = useState("Prefiro não dizer");
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,16 +41,30 @@ export default function SignupPage() {
       setMessage("O Firebase ainda não está configurado neste ambiente.");
       return;
     }
+    if (password !== confirmPassword) {
+      setMessage("A confirmação de senha não confere com a senha digitada.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
+      await setPendingSignupProfile({
+        name: name.trim(),
+        username: normalizeUsername(username) || undefined,
+        birthDate: birthDate.trim(),
+        gender,
+        showBirthYear,
+      });
       const credential = await createUserWithEmailAndPassword(
         auth,
         email.trim().toLowerCase(),
         password,
       );
       await updateProfile(credential.user, { displayName: name.trim() });
+      await setWelcomeToastVisible();
+      router.replace("/");
     } catch {
+      await clearPendingSignupProfile();
       setMessage(
         "Não foi possível criar a conta. Confira os dados e tente novamente.",
       );
@@ -51,14 +83,6 @@ export default function SignupPage() {
             Leva menos de um minuto. Depois é só montar suas listas.
           </p>
         </div>
-
-        <Button
-          title="Continuar com Google"
-          variant="outline"
-          onClick={() =>
-            setMessage("Login com Google estará disponível em breve.")
-          }
-        />
 
         <form onSubmit={submit} className="space-y-4">
           <Card className="space-y-3.5">
@@ -94,8 +118,22 @@ export default function SignupPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
+            <Field
+              label="Repetir a senha"
+              type="password"
+              minLength={8}
+              placeholder="Digite a senha novamente"
+              required
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Sexo" as="select" defaultValue="Prefiro não dizer">
+              <Field
+                label="Sexo"
+                as="select"
+                value={gender}
+                onChange={(event) => setGender(event.target.value)}
+              >
                 <option>Prefiro não dizer</option>
                 <option>Feminino</option>
                 <option>Masculino</option>
@@ -105,6 +143,10 @@ export default function SignupPage() {
                 label="Nascimento"
                 placeholder="dd / mm / aaaa"
                 inputMode="numeric"
+                value={formatBirthDate(birthDate)}
+                onChange={(event) =>
+                  setBirthDate(event.target.value.replace(/\D/g, "").slice(0, 8))
+                }
               />
             </div>
           </Card>
