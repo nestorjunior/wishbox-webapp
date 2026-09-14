@@ -86,7 +86,7 @@ export default function ListPage() {
         <Button
           title="Adicionar produto"
           icon={<Plus size={18} />}
-          onClick={() => router.push("/add-product")}
+          onClick={() => router.push(`/add-product?listId=${list.id}`)}
         />
       ) : null}
 

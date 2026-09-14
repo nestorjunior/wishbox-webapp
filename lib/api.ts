@@ -1050,48 +1050,136 @@ async function getListDetailPage(
   return response.data;
 }
 
+function extractListArray(chunk: unknown): BackendList[] {
+  if (!chunk || typeof chunk !== "object") return [];
+  const raw = chunk as { data?: unknown };
+  if (Array.isArray(raw.data)) return raw.data as BackendList[];
+  if (Array.isArray(chunk)) return chunk as BackendList[];
+  if (
+    raw.data &&
+    typeof raw.data === "object" &&
+    Array.isArray((raw.data as { data?: unknown }).data)
+  ) {
+    return (raw.data as { data: BackendList[] }).data;
+  }
+  return [];
+}
+
 export async function fetchBackendCatalog(
   token: string,
+  currentUserId?: string,
 ): Promise<BackendCatalog> {
   const pageSize = 100;
-  const lists: BackendList[] = [];
-  let page = 1;
-  let totalPages = 1;
+  const listsMap = new Map<string, BackendList>();
+  const userListIds = new Set<string>();
 
-  do {
-    const chunk = await listListsPage(token, page, pageSize);
-    lists.push(...chunk.data);
-    totalPages = chunk.pagination.totalPages || 1;
-    page += 1;
-  } while (page <= totalPages);
-
-  const itemsByList: Record<string, BackendItem[]> = {};
-
-  for (const list of lists) {
-    const collected: BackendItem[] = [];
-    let itemsPage = 1;
-    let itemsTotalPages = 1;
+  try {
+    let page = 1;
+    let totalPages = 1;
 
     do {
-      const detail = await getListDetailPage(
-        token,
-        list.id,
-        itemsPage,
-        pageSize,
-      );
-      const entries = detail.items?.data ?? [];
-
-      const items = await Promise.all(
-        entries.map((entry) => fetchBackendItem(token, entry.itemId)),
-      );
-      collected.push(...items);
-
-      itemsTotalPages = detail.items?.pagination?.totalPages || 1;
-      itemsPage += 1;
-    } while (itemsPage <= itemsTotalPages);
-
-    itemsByList[list.id] = collected;
+      const chunk = await listListsPage(token, page, pageSize);
+      extractListArray(chunk).forEach((list) => listsMap.set(list.id, list));
+      totalPages = chunk.pagination?.totalPages || 1;
+      page += 1;
+    } while (page <= totalPages);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[catalog] listListsPage failed", error);
+    }
   }
+
+  if (currentUserId) {
+    try {
+      let userPage = 1;
+      let userTotalPages = 1;
+
+      do {
+        const chunk = await fetchUserLists(token, currentUserId, {
+          page: userPage,
+          pageSize,
+        });
+        extractListArray(chunk).forEach((list) => {
+          listsMap.set(list.id, list);
+          userListIds.add(list.id);
+        });
+        userTotalPages = chunk.pagination?.totalPages || 1;
+        userPage += 1;
+      } while (userPage <= userTotalPages);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[catalog] fetchUserLists failed", error);
+      }
+    }
+  }
+
+  const lists = Array.from(listsMap.values());
+  const itemsByList: Record<string, BackendItem[]> = {};
+
+  await Promise.all(
+    lists.map(async (list) => {
+      const collected: BackendItem[] = [];
+      try {
+        let itemsPage = 1;
+        let itemsTotalPages = 1;
+
+        do {
+          let detail: BackendListDetail | null = null;
+          // only lists owned by/shared with the current user support the user-scoped endpoint
+          if (currentUserId && userListIds.has(list.id)) {
+            try {
+              detail = await fetchUserListDetail(
+                token,
+                currentUserId,
+                list.id,
+                {
+                  itemsPage,
+                  itemsPageSize: pageSize,
+                },
+              );
+            } catch {
+              detail = null;
+            }
+          }
+          if (!detail) {
+            detail = await getListDetailPage(
+              token,
+              list.id,
+              itemsPage,
+              pageSize,
+            );
+          }
+
+          const entries = detail.items?.data ?? [];
+
+          const items = await Promise.all(
+            entries.map(async (entry) => {
+              try {
+                return await fetchBackendItem(token, entry.itemId);
+              } catch {
+                return null;
+              }
+            }),
+          );
+          collected.push(
+            ...items.filter((item): item is BackendItem => item !== null),
+          );
+
+          itemsTotalPages = detail.items?.pagination?.totalPages || 1;
+          itemsPage += 1;
+        } while (itemsPage <= itemsTotalPages);
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            `[catalog] failed fetching items for list ${list.id}`,
+            error,
+          );
+        }
+      }
+
+      itemsByList[list.id] = collected;
+    }),
+  );
 
   return { lists, itemsByList };
 }

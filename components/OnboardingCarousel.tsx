@@ -111,7 +111,8 @@ export function OnboardingCarousel({
                 alt=""
                 width={30}
                 height={30}
-                className="rounded-lg"
+                className="size-7.5 rounded-lg object-contain"
+                style={{ width: "auto", height: "auto" }}
               />
 
               <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
@@ -144,7 +145,8 @@ export function OnboardingCarousel({
                 alt=""
                 width={30}
                 height={30}
-                className="rounded-lg"
+                className="size-7.5 rounded-lg object-contain"
+                style={{ width: "auto", height: "auto" }}
               />
 
               <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">

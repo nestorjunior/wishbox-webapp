@@ -1,82 +1,331 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Camera, Link as LinkIcon } from "lucide-react";
-import { Button, Card, Field } from "@/components/ui";
+import {
+  type FormEvent,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Globe,
+  Link as LinkIcon,
+  List,
+  Lock,
+  Plus,
+  Users,
+} from "lucide-react";
+
 import { FormHeader } from "@/components/FormHeader";
+import { BottomNav } from "@/components/BottomNav";
+import { ProductImagePicker } from "@/components/ProductImagePicker";
 import { Screen } from "@/components/Screen";
-import { addItemToList, createItem } from "@/lib/api";
+import { Button, Card, Field } from "@/components/ui";
+import {
+  ApiError,
+  addItemToList,
+  createItem,
+  createList,
+} from "@/lib/api";
+import type { ListPrivacy } from "@/lib/data";
 import { auth } from "@/lib/firebase";
+import { isSupportedItemImageContentType } from "@/lib/item-image-upload";
 import { useWishbox } from "@/store/wishbox-store";
 
-export default function AddProductPage() {
-  const router = useRouter();
-  const { editableLists, dispatch } = useWishbox();
+const listTemplates = [
+  { emoji: "🎁", name: "Aniversário", desc: "Presentes para comemorar" },
+  { emoji: "🏡", name: "Casa nova", desc: "Tudo para o novo lar" },
+  { emoji: "🎄", name: "Natal", desc: "Ideias para o fim de ano" },
+  { emoji: "🧳", name: "Viagem", desc: "O que levar na próxima viagem" },
+  { emoji: "💻", name: "Tecnologia", desc: "Desejos e novidades" },
+  { emoji: "✨", name: "Desejos gerais", desc: "Coisas que gostaria de ganhar" },
+] as const;
 
-  const [listId, setListId] = useState(editableLists[0]?.id ?? "");
+function formatCurrencyInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  const amount = Number(digits) / 100;
+
+  return amount.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseCurrency(value: string): number {
+  return (
+    Number(
+      value
+        .replace(/\./g, "")
+        .replace(",", "."),
+    ) || 0
+  );
+}
+
+function buildProductDescription(
+  detail: string,
+  store: string,
+): string | undefined {
+  const parts = [
+    detail.trim(),
+    store.trim()
+      ? `Loja: ${store.trim()}`
+      : "",
+  ].filter(Boolean);
+
+  return parts.length > 0
+    ? parts.join("\n")
+    : undefined;
+}
+
+export default function AddProductPage() {
+  return (
+    <Suspense
+      fallback={
+        <Screen>
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-muted">Carregando...</p>
+          </div>
+          <BottomNav />
+        </Screen>
+      }
+    >
+      <AddProductContent />
+    </Suspense>
+  );
+}
+
+function AddProductContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialListIdParam = searchParams.get("listId");
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const {
+    editableLists,
+    backendUser,
+    dispatch,
+    authReady,
+  } = useWishbox();
+
+  const availableLists = editableLists;
+  const hasAvailableLists = availableLists.length > 0;
+
+  const [listMode, setListMode] = useState<"existing" | "new">("existing");
+  const [selectedListId, setSelectedListId] = useState("");
+
+  // New list form state
+  const [newListName, setNewListName] = useState("");
+  const [newListDescription, setNewListDescription] = useState("");
+  const [newListEmoji, setNewListEmoji] = useState("🎁");
+  const [newListPrivacy, setNewListPrivacy] = useState<ListPrivacy>("public");
+
+  // Product form state
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [store, setStore] = useState("");
   const [detail, setDetail] = useState("");
   const [link, setLink] = useState("");
   const [image, setImage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  // Sync initial list from query param or available lists
+  useEffect(() => {
+    if (initialListIdParam && availableLists.some((l) => l.id === initialListIdParam)) {
+      setSelectedListId(initialListIdParam);
+      setListMode("existing");
+    } else if (availableLists.length === 0 && authReady) {
+      setListMode("new");
+    }
+  }, [initialListIdParam, availableLists, authReady]);
+
+  const effectiveListId = useMemo(() => {
+    if (
+      selectedListId &&
+      availableLists.some((list) => list.id === selectedListId)
+    ) {
+      return selectedListId;
+    }
+
+    return availableLists[0]?.id ?? "";
+  }, [availableLists, selectedListId]);
+
+  const selectedList = useMemo(
+    () => availableLists.find((list) => list.id === effectiveListId),
+    [availableLists, effectiveListId],
+  );
+
+  const isListValid =
+    listMode === "existing"
+      ? hasAvailableLists && Boolean(effectiveListId)
+      : Boolean(newListName.trim());
+
+  const canSubmit =
+    mounted &&
+    authReady &&
+    !busy &&
+    Boolean(name.trim()) &&
+    isListValid;
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!auth?.currentUser || !listId) {
-      setMessage("Escolha uma lista e entre novamente para salvar o produto.");
+    if (busy) {
       return;
     }
 
-    if (!name.trim()) {
+    setMessage("");
+
+    const currentUser = auth?.currentUser;
+
+    if (!currentUser) {
+      setMessage("Sessão indisponível. Entre novamente.");
+      return;
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setMessage("Informe o nome do produto.");
       return;
     }
 
+    if (listMode === "new" && !newListName.trim()) {
+      setMessage("Informe o nome da nova lista.");
+      return;
+    }
+
+    if (listMode === "existing" && !effectiveListId) {
+      setMessage("Selecione uma lista.");
+      return;
+    }
+
     setBusy(true);
-    setMessage("");
 
     try {
-      const token = await auth.currentUser.getIdToken();
-      const priceValue =
-        Number(price.replace(/\./g, "").replace(",", ".")) || 0;
+      const token = await currentUser.getIdToken();
 
-      const created = await createItem(token, {
-        title: name.trim(),
-        description:
-          [detail.trim(), store.trim() ? `Loja: ${store.trim()}` : ""]
-            .filter(Boolean)
-            .join("\n") || undefined,
-        externalUrl: link.trim() || undefined,
-        imageExternalUrl: image.trim() || undefined,
-        priceAmount: priceValue > 0 ? priceValue.toFixed(2) : undefined,
-        priceCurrency: priceValue > 0 ? "BRL" : undefined,
+      let targetListId = effectiveListId;
+
+      // 1. Criar nova lista se o usuário escolheu essa opção
+      if (listMode === "new") {
+        const trimmedNewListName = newListName.trim();
+        const trimmedNewListDesc = newListDescription.trim();
+
+        const createdList = await createList(token, {
+          name: trimmedNewListName,
+          description: trimmedNewListDesc || undefined,
+          private: newListPrivacy !== "public",
+          listType: newListPrivacy === "guests" ? "collaborative" : "standard",
+        });
+
+        targetListId = createdList.id;
+
+        const finalOwnerId = backendUser?.id || currentUser.uid;
+
+        dispatch({
+          type: "list/create",
+          list: {
+            id: createdList.id,
+            ownerId: finalOwnerId,
+            name: createdList.name,
+            description: createdList.description ?? trimmedNewListDesc,
+            emoji: newListEmoji || "🎁",
+            tint: "lilac",
+            privacy: newListPrivacy,
+            paused: false,
+            category: createdList.name,
+            members: [],
+          },
+        });
+      }
+
+      // 2. Preparar dados do produto
+      const numericPrice = parseCurrency(price);
+      const trimmedStore = store.trim();
+      const trimmedDetail = detail.trim();
+      const trimmedLink = link.trim();
+      const trimmedImage = image.trim();
+
+      const externalImageUrl =
+        trimmedImage && !trimmedImage.startsWith("blob:")
+          ? trimmedImage
+          : undefined;
+
+      if (imageFile && !isSupportedItemImageContentType(imageFile.type)) {
+        setMessage("Formato de imagem não suportado. Escolha PNG, JPEG ou GIF.");
+        setBusy(false);
+        return;
+      }
+
+      // 3. Criar o item no backend
+      const createdItem = await createItem(token, {
+        title: trimmedName,
+        description: buildProductDescription(trimmedDetail, trimmedStore),
+        externalUrl: trimmedLink || undefined,
+        imageExternalUrl: externalImageUrl,
+        priceAmount: numericPrice > 0 ? numericPrice.toFixed(2) : undefined,
+        priceCurrency: numericPrice > 0 ? "BRL" : undefined,
         status: "ACTIVE",
         priority: "MEDIUM",
       });
 
+      let finalImageUrl = externalImageUrl;
+
+      // 4. Enviar imagem se houver arquivo
+      if (imageFile && isSupportedItemImageContentType(imageFile.type)) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("itemId", createdItem.id);
+        uploadFormData.append("file", imageFile);
+
+        const uploadResponse = await fetch("/api/product-image", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Não foi possível enviar a imagem do produto.");
+        }
+
+        const uploadResult = (await uploadResponse.json()) as {
+          imageUrl?: string | null;
+        };
+
+        finalImageUrl = uploadResult.imageUrl ?? undefined;
+      }
+
+      // 5. Vincular item à lista no backend
       await addItemToList(token, {
-        listId,
-        itemId: created.id,
+        listId: targetListId,
+        itemId: createdItem.id,
       });
 
+      // 6. Atualizar store local
       dispatch({
         type: "product/create",
         product: {
-          id: created.id,
-          listId,
-          name: name.trim(),
-          store: store.trim(),
-          detail: detail.trim(),
-          price: priceValue,
-          link: link.trim(),
+          id: createdItem.id,
+          listId: targetListId,
+          name: trimmedName,
+          store: trimmedStore,
+          detail: trimmedDetail,
+          price: numericPrice,
+          link: trimmedLink,
           note: "",
           emoji: "🎁",
-          image: image.trim() || undefined,
+          image: finalImageUrl,
           tint: "lilac",
           priority: "media",
           quantity: 1,
@@ -89,11 +338,18 @@ export default function AddProductPage() {
         },
       });
 
-      router.push(`/list/${listId}`);
-    } catch {
-      setMessage(
-        "Não foi possível adicionar o produto agora. Tente novamente.",
-      );
+      router.push(`/list/${targetListId}`);
+    } catch (error) {
+      console.error("Erro ao adicionar produto:", error);
+
+      const errorMessage =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Não foi possível adicionar o produto agora. Tente novamente.";
+
+      setMessage(errorMessage);
     } finally {
       setBusy(false);
     }
@@ -108,36 +364,18 @@ export default function AddProductPage() {
           <h1 className="text-2xl font-bold text-foreground">
             Adicionar produto
           </h1>
+
           <p className="text-sm leading-5 text-muted">
             Cadastre algo que você gostaria de ganhar.
           </p>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Card className="space-y-3">
-            <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-background p-4 text-center">
-              <Camera size={24} className="text-muted" />
-
-              <p className="text-sm text-muted">
-                Adicione uma imagem pelo link
-              </p>
-
-              <Field
-                placeholder="https://.../imagem.jpg"
-                value={image}
-                onChange={(event) => setImage(event.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            <Button
-              title="Selecionar imagem"
-              variant="outline"
-              icon={<Camera size={16} />}
-              onClick={() =>
-                setMessage("O seletor de imagens será conectado em breve.")
-              }
-              className="w-full"
+            <ProductImagePicker
+              value={image}
+              onChange={setImage}
+              onFileChange={setImageFile}
             />
           </Card>
 
@@ -146,16 +384,20 @@ export default function AddProductPage() {
               label="Nome do produto"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Ex.: Fone de ouvido"
+              placeholder="Ex.: Fone de ouvido sem fio"
               required
+              disabled={busy}
             />
 
             <Field
               label="Preço (R$)"
               value={price}
-              onChange={(event) => setPrice(event.target.value)}
+              onChange={(event) =>
+                setPrice(formatCurrencyInput(event.target.value))
+              }
               inputMode="decimal"
               placeholder="0,00"
+              disabled={busy}
             />
 
             <Field
@@ -163,6 +405,7 @@ export default function AddProductPage() {
               value={store}
               onChange={(event) => setStore(event.target.value)}
               placeholder="Ex.: Loja Tech"
+              disabled={busy}
             />
 
             <Field
@@ -170,7 +413,8 @@ export default function AddProductPage() {
               multiline
               value={detail}
               onChange={(event) => setDetail(event.target.value)}
-              placeholder="Tamanho, cor, modelo..."
+              placeholder="Tamanho, cor, voltagem, modelo..."
+              disabled={busy}
             />
 
             <Field
@@ -179,39 +423,138 @@ export default function AddProductPage() {
               onChange={(event) => setLink(event.target.value)}
               placeholder="https://loja.com/produto"
               icon={<LinkIcon size={18} className="text-muted" />}
+              disabled={busy}
             />
 
-            <Field
-              label="Adicionar à lista"
-              as="select"
-              value={listId}
-              onChange={(event) => setListId(event.target.value)}
-            >
-              <option value="">Selecione uma lista</option>
+            {listMode === "existing" && hasAvailableLists ? (
+              <div className="space-y-1.5">
+                <Field
+                  label="Adicionar à lista"
+                  as="select"
+                  value={effectiveListId}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    if (val === "__new__") {
+                      setListMode("new");
+                    } else {
+                      setSelectedListId(val);
+                    }
+                  }}
+                  disabled={!mounted || !authReady || busy}
+                >
+                  {availableLists.map((list) => (
+                    <option
+                      key={list.id}
+                      value={list.id}
+                      className="bg-card text-foreground"
+                    >
+                      {list.emoji ? `${list.emoji} ` : ""}{list.name}
+                    </option>
+                  ))}
+                  <option value="__new__" className="bg-card font-medium text-primary">
+                    + Criar nova lista...
+                  </option>
+                </Field>
 
-              {editableLists.map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.name}
-                </option>
-              ))}
-            </Field>
+                {selectedList ? (
+                  <p className="text-xs text-muted">
+                    Produto será adicionado à lista{" "}
+                    <span className="font-medium text-foreground">
+                      {selectedList.name}
+                    </span>
+                    .
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-foreground">
+                    Nova lista
+                  </span>
+                  {hasAvailableLists ? (
+                    <button
+                      type="button"
+                      onClick={() => setListMode("existing")}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      Escolher lista existente
+                    </button>
+                  ) : null}
+                </div>
+
+                {!hasAvailableLists && authReady ? (
+                  <p className="text-xs text-muted">
+                    Você ainda não tem listas. Digite o nome para criá-la junto com o produto.
+                  </p>
+                ) : null}
+
+                <Field
+                  label="Nome da lista"
+                  value={newListName}
+                  onChange={(event) => setNewListName(event.target.value)}
+                  placeholder="Ex.: Meu Aniversário, Casa Nova..."
+                  required
+                  disabled={busy}
+                />
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">
+                    Sugestões de lista
+                  </label>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {listTemplates.map((item) => (
+                      <button
+                        type="button"
+                        key={item.name}
+                        onClick={() => {
+                          setNewListName(item.name);
+                          setNewListDescription(item.desc);
+                          setNewListEmoji(item.emoji);
+                        }}
+                        disabled={busy}
+                        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          newListName === item.name
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-card text-muted hover:text-foreground"
+                        }`}
+                      >
+                        <span>{item.emoji}</span>
+                        <span>{item.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
 
           {message ? (
-            <p className="rounded-md bg-tint-rose px-4 py-3 text-sm text-danger">
+            <p
+              role="alert"
+              className="rounded-md bg-tint-rose px-4 py-3 text-sm text-danger"
+            >
               {message}
             </p>
           ) : null}
 
           <Button
-            title="Adicionar produto"
             type="submit"
+            title={
+              !authReady
+                ? "Carregando..."
+                : listMode === "new"
+                  ? "Criar lista e adicionar produto"
+                  : "Adicionar produto"
+            }
             loading={busy}
-            disabled={busy}
+            disabled={!canSubmit}
             className="w-full"
           />
         </form>
       </main>
+
+      <BottomNav />
     </Screen>
   );
 }

@@ -50,7 +50,7 @@ function firebaseErrorMessage(error: unknown) {
 
 function LoginContent() {
   const router = useRouter();
-  const { authReady, backendUser, me, accessibleLists, productsOf } =
+  const { state, authReady, backendUser, me, accessibleLists, productsOf, refreshSession } =
     useWishbox();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,6 +98,21 @@ function LoginContent() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="animate-spin text-primary" size={24} />
+      </div>
+    );
+  }
+
+  if (state.authed && !backendUser) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+        <h1 className="text-lg font-bold text-foreground">
+          Não foi possível carregar seu perfil
+        </h1>
+        <p className="text-sm leading-5 text-muted">
+          Sua sessão está ativa, mas o Wishbox ainda não conseguiu buscar seus
+          dados. Tente novamente.
+        </p>
+        <Button title="Tentar novamente" onClick={() => void refreshSession()} />
       </div>
     );
   }
