@@ -24,6 +24,7 @@ import {
   addItemToList,
   createItem,
   createList,
+  updateItem,
 } from "@/lib/api";
 import type { ListPrivacy } from "@/lib/data";
 import { auth } from "@/lib/firebase";
@@ -101,13 +102,20 @@ function AddProductContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialListIdParam = searchParams.get("listId");
+  const editingProductId = searchParams.get("productId");
 
   const {
     editableLists,
     backendUser,
     dispatch,
     authReady,
+    productById,
   } = useWishbox();
+
+  const editingProduct = editingProductId
+    ? productById(editingProductId)
+    : undefined;
+  const isEditing = Boolean(editingProductId);
 
   const availableLists = editableLists;
   const hasAvailableLists = availableLists.length > 0;
@@ -121,13 +129,20 @@ function AddProductContent() {
   const [newListEmoji, setNewListEmoji] = useState("🎁");
   const [newListPrivacy, setNewListPrivacy] = useState<ListPrivacy>("public");
 
-  // Product form state
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [store, setStore] = useState("");
-  const [detail, setDetail] = useState("");
-  const [link, setLink] = useState("");
-  const [image, setImage] = useState("");
+  // Product form state (pre-filled from the product being edited, if any)
+  const [name, setName] = useState(() => editingProduct?.name ?? "");
+  const [price, setPrice] = useState(() =>
+    editingProduct && editingProduct.price > 0
+      ? editingProduct.price.toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : "",
+  );
+  const [store, setStore] = useState(() => editingProduct?.store ?? "");
+  const [detail, setDetail] = useState(() => editingProduct?.detail ?? "");
+  const [link, setLink] = useState(() => editingProduct?.link ?? "");
+  const [image, setImage] = useState(() => editingProduct?.image ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -170,7 +185,7 @@ function AddProductContent() {
     authReady &&
     !busy &&
     Boolean(name.trim()) &&
-    isListValid;
+    (isEditing || isListValid);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -194,12 +209,12 @@ function AddProductContent() {
       return;
     }
 
-    if (effectiveListMode === "new" && !newListName.trim()) {
+    if (!isEditing && effectiveListMode === "new" && !newListName.trim()) {
       setMessage("Informe o nome da nova lista.");
       return;
     }
 
-    if (effectiveListMode === "existing" && !effectiveListId) {
+    if (!isEditing && effectiveListMode === "existing" && !effectiveListId) {
       setMessage("Selecione uma lista.");
       return;
     }
@@ -208,6 +223,79 @@ function AddProductContent() {
 
     try {
       const token = await currentUser.getIdToken();
+
+      const numericPrice = parseCurrency(price);
+      const trimmedStore = store.trim();
+      const trimmedDetail = detail.trim();
+      const trimmedLink = link.trim();
+      const trimmedImage = image.trim();
+
+      const externalImageUrl =
+        trimmedImage && !trimmedImage.startsWith("blob:")
+          ? trimmedImage
+          : undefined;
+
+      if (imageFile && !isSupportedItemImageContentType(imageFile.type)) {
+        setMessage("Formato de imagem não suportado. Escolha PNG, JPEG ou GIF.");
+        setBusy(false);
+        return;
+      }
+
+      const uploadProductImage = async (itemId: string) => {
+        if (!imageFile || !isSupportedItemImageContentType(imageFile.type)) {
+          return externalImageUrl;
+        }
+
+        const uploadFormData = new FormData();
+        uploadFormData.append("itemId", itemId);
+        uploadFormData.append("file", imageFile);
+
+        const uploadResponse = await fetch("/api/product-image", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Não foi possível enviar a imagem do produto.");
+        }
+
+        const uploadResult = (await uploadResponse.json()) as {
+          imageUrl?: string | null;
+        };
+
+        return uploadResult.imageUrl ?? undefined;
+      };
+
+      if (isEditing && editingProduct) {
+        await updateItem(token, editingProduct.id, {
+          title: trimmedName,
+          description: buildProductDescription(trimmedDetail, trimmedStore),
+          externalUrl: trimmedLink || undefined,
+          priceAmount: numericPrice > 0 ? numericPrice.toFixed(2) : undefined,
+          priceCurrency: numericPrice > 0 ? "BRL" : undefined,
+          priority: "MEDIUM",
+          imageExternalUrl: externalImageUrl,
+        });
+
+        const finalImageUrl = await uploadProductImage(editingProduct.id);
+
+        dispatch({
+          type: "product/update",
+          id: editingProduct.id,
+          patch: {
+            name: trimmedName,
+            store: trimmedStore,
+            detail: trimmedDetail,
+            price: numericPrice,
+            link: trimmedLink,
+            image: finalImageUrl,
+          },
+        });
+
+        router.push(`/product/${editingProduct.id}`);
+        return;
+      }
 
       let targetListId = effectiveListId;
 
@@ -244,25 +332,7 @@ function AddProductContent() {
         });
       }
 
-      // 2. Preparar dados do produto
-      const numericPrice = parseCurrency(price);
-      const trimmedStore = store.trim();
-      const trimmedDetail = detail.trim();
-      const trimmedLink = link.trim();
-      const trimmedImage = image.trim();
-
-      const externalImageUrl =
-        trimmedImage && !trimmedImage.startsWith("blob:")
-          ? trimmedImage
-          : undefined;
-
-      if (imageFile && !isSupportedItemImageContentType(imageFile.type)) {
-        setMessage("Formato de imagem não suportado. Escolha PNG, JPEG ou GIF.");
-        setBusy(false);
-        return;
-      }
-
-      // 3. Criar o item no backend
+      // 2. Criar o item no backend
       const createdItem = await createItem(token, {
         title: trimmedName,
         description: buildProductDescription(trimmedDetail, trimmedStore),
@@ -274,38 +344,16 @@ function AddProductContent() {
         priority: "MEDIUM",
       });
 
-      let finalImageUrl = externalImageUrl;
+      // 3. Enviar imagem se houver arquivo
+      const finalImageUrl = await uploadProductImage(createdItem.id);
 
-      // 4. Enviar imagem se houver arquivo
-      if (imageFile && isSupportedItemImageContentType(imageFile.type)) {
-        const uploadFormData = new FormData();
-        uploadFormData.append("itemId", createdItem.id);
-        uploadFormData.append("file", imageFile);
-
-        const uploadResponse = await fetch("/api/product-image", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: uploadFormData,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Não foi possível enviar a imagem do produto.");
-        }
-
-        const uploadResult = (await uploadResponse.json()) as {
-          imageUrl?: string | null;
-        };
-
-        finalImageUrl = uploadResult.imageUrl ?? undefined;
-      }
-
-      // 5. Vincular item à lista no backend
+      // 4. Vincular item à lista no backend
       await addItemToList(token, {
         listId: targetListId,
         itemId: createdItem.id,
       });
 
-      // 6. Atualizar store local
+      // 5. Atualizar store local
       dispatch({
         type: "product/create",
         product: {
@@ -348,6 +396,18 @@ function AddProductContent() {
     }
   };
 
+  if (isEditing && !editingProduct) {
+    return (
+      <Screen>
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
+          <FormHeader />
+          <p className="text-sm text-muted">Produto não encontrado.</p>
+        </main>
+        <BottomNav />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
@@ -355,11 +415,13 @@ function AddProductContent() {
 
         <div className="mt-2 space-y-1">
           <h1 className="text-2xl font-bold text-foreground">
-            Adicionar produto
+            {isEditing ? "Editar produto" : "Adicionar produto"}
           </h1>
 
           <p className="text-sm leading-5 text-muted">
-            Cadastre algo que você gostaria de ganhar.
+            {isEditing
+              ? "Atualize as informações do produto."
+              : "Cadastre algo que você gostaria de ganhar."}
           </p>
         </div>
 
@@ -419,7 +481,7 @@ function AddProductContent() {
               disabled={busy}
             />
 
-            {effectiveListMode === "existing" && hasAvailableLists ? (
+            {!isEditing && effectiveListMode === "existing" && hasAvailableLists ? (
               <div className="space-y-1.5">
                 <Field
                   label="Adicionar à lista"
@@ -459,7 +521,7 @@ function AddProductContent() {
                   </p>
                 ) : null}
               </div>
-            ) : (
+            ) : !isEditing ? (
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[13px] font-semibold text-foreground">
@@ -554,7 +616,7 @@ function AddProductContent() {
                   ))}
                 </section>
               </div>
-            )}
+            ) : null}
           </Card>
 
           {message ? (
@@ -571,9 +633,11 @@ function AddProductContent() {
             title={
               !authReady
                 ? "Carregando..."
-                : effectiveListMode === "new"
-                  ? "Criar lista e adicionar produto"
-                  : "Adicionar produto"
+                : isEditing
+                  ? "Salvar alterações"
+                  : effectiveListMode === "new"
+                    ? "Criar lista e adicionar produto"
+                    : "Adicionar produto"
             }
             loading={busy}
             disabled={!canSubmit}

@@ -84,18 +84,26 @@ export function ListCard({
           </div>
 
           {editable ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                event.preventDefault();
-                setMenuOpen(true);
-              }}
-              aria-label={`Ações da lista ${list.name}`}
-              className="z-10 flex size-5 items-center justify-center rounded-full bg-background"
-            >
-              <Ellipsis size={15} className="text-muted" />
-            </button>
+            <div className="relative z-20">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  setMenuOpen((open) => !open);
+                }}
+                aria-label={`Ações da lista ${list.name}`}
+                className="flex size-5 items-center justify-center rounded-full bg-background"
+              >
+                <Ellipsis size={15} className="text-muted" />
+              </button>
+
+              <ListActionsSheet
+                list={list}
+                visible={menuOpen}
+                onClose={() => setMenuOpen(false)}
+              />
+            </div>
           ) : null}
         </div>
 
@@ -112,14 +120,6 @@ export function ListCard({
           {list.name}
         </p>
       </div>
-
-      {editable ? (
-        <ListActionsSheet
-          list={list}
-          visible={menuOpen}
-          onClose={() => setMenuOpen(false)}
-        />
-      ) : null}
     </>
   );
 }
