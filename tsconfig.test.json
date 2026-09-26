@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".test-dist",
+    "plugins": [],
+    "verbatimModuleSyntax": false
+  },
+  "include": ["lib/username.ts", "lib/product-owner-actions.ts", "tests/unit/**/*.test.ts"],
+  "exclude": ["node_modules"]
+}
