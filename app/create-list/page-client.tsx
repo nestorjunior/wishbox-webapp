@@ -184,7 +184,7 @@ function ListForm({
           name: created.name,
           description: created.description ?? normalizedDescription,
           emoji,
-          tint: "lilac",
+          tint: template[3].replace("bg-tint-", "") as GiftList["tint"],
           privacy,
           paused: false,
           category: template[1],
@@ -200,16 +200,15 @@ function ListForm({
           list: newList,
         });
 
-        if (privacy === "guests") {
-          setCreatedGuestList(newList);
-          return;
+        if (privacy !== "guests") {
+          showToast({ text: "Lista criada com sucesso!" });
         }
-
-        showToast({ text: "Lista criada com sucesso!" });
         router.replace(
           returnToAddProduct
             ? `/add-product?listId=${encodeURIComponent(created.id)}&submitAfterListCreation=true`
-            : "/",
+            : privacy === "guests"
+              ? `/list/${created.id}`
+              : "/",
         );
       }
     } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Eye, Pencil, Search, Shield, X } from "lucide-react";
+import { Check, Eye, LockKeyhole, Pencil, Search, X } from "lucide-react";
 import { Avatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useBackendUserSearch } from "@/hooks/use-backend-user-search";
@@ -23,7 +23,7 @@ export function ListMembersSheet({ list, visible, onClose }: { list: GiftList; v
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Record<string, Selection>>({});
   const [submitting, setSubmitting] = useState(false);
-  const { users, loading, error } = useBackendUserSearch(query, backendUser?.id);
+  const { users, loading, error } = useBackendUserSearch(query, backendUser?.id, true);
   const memberIds = useMemo(() => new Set((list.members ?? []).map((member) => member.userId)), [list.members]);
   const candidates = users.filter((user) => !memberIds.has(user.id));
   const selections = Object.values(selected);
@@ -57,7 +57,11 @@ export function ListMembersSheet({ list, visible, onClose }: { list: GiftList; v
 
   const submit = async () => {
     const firebaseUser = auth?.currentUser;
-    if (!firebaseUser || selections.length === 0 || submitting) return;
+    if (selections.length === 0) {
+      close();
+      return;
+    }
+    if (!firebaseUser || submitting) return;
     setSubmitting(true);
     try {
       const token = await firebaseUser.getIdToken();
@@ -77,15 +81,15 @@ export function ListMembersSheet({ list, visible, onClose }: { list: GiftList; v
   return (
     <div className="fixed inset-0 z-60 flex items-end justify-center">
       <button type="button" aria-label="Fechar" onClick={close} className="absolute inset-0 bg-[rgba(20,20,28,0.72)]" />
-      <section role="dialog" aria-modal="true" aria-labelledby="invite-title" className="relative flex max-h-[78vh] w-full max-w-xl flex-col rounded-t-xl bg-card px-5 pt-3 pb-5 shadow-xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="invite-title" className="relative flex h-[71vh] max-h-[640px] min-h-[520px] w-full max-w-[960px] flex-col rounded-t-xl bg-background px-[18px] pt-3 pb-5 shadow-xl">
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border" />
         <div className="flex items-center justify-between">
           <h2 id="invite-title" className="text-[17px] font-bold">Convidar pessoas</h2>
           <button type="button" aria-label="Fechar" onClick={close} className="p-1 text-muted"><X size={19} /></button>
         </div>
 
-        <div className="mt-4 flex gap-3 rounded-xl bg-background px-3 py-3 text-muted">
-          <Shield size={17} className="mt-0.5 shrink-0" />
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-primary-soft/50 px-3 py-3 text-muted">
+          <LockKeyhole size={14} className="shrink-0" />
           <p className="text-xs leading-5">Esta lista é especial: só quem você convidar consegue ver. Selecione os amigos e escolha se cada um pode apenas ver ou também editar.</p>
         </div>
 
@@ -105,10 +109,10 @@ export function ListMembersSheet({ list, visible, onClose }: { list: GiftList; v
         ) : null}
 
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
-          {query.trim().length < 3 ? <p className="py-8 text-center text-sm text-muted">Digite pelo menos 3 caracteres para encontrar amigos.</p> : null}
+          {query.trim().length > 0 && query.trim().length < 3 ? <p className="py-8 text-center text-sm text-muted">Digite pelo menos 3 caracteres para encontrar amigos.</p> : null}
           {loading ? <p className="py-8 text-center text-sm text-muted">Buscando amigos...</p> : null}
           {error ? <p className="py-8 text-center text-sm text-danger">{error}</p> : null}
-          {!loading && query.trim().length >= 3 && candidates.length === 0 && !error ? <p className="py-8 text-center text-sm text-muted">Nenhuma pessoa encontrada.</p> : null}
+          {!loading && (query.trim().length === 0 || query.trim().length >= 3) && candidates.length === 0 && !error ? <p className="py-8 text-center text-sm text-muted">Nenhuma pessoa encontrada.</p> : null}
           {candidates.map((user) => {
             const selection = selected[user.id];
             return (
@@ -127,8 +131,8 @@ export function ListMembersSheet({ list, visible, onClose }: { list: GiftList; v
           })}
         </div>
 
-        <button type="button" disabled={selections.length === 0 || submitting} onClick={() => void submit()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-white disabled:opacity-50">
-          <Check size={16} /> {submitting ? "Convidando..." : `Convidar (${selections.length})`}
+        <button type="button" disabled={submitting} onClick={() => void submit()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-primary disabled:opacity-50">
+          <Check size={16} /> {submitting ? "Convidando..." : "Concluir"}
         </button>
       </section>
     </div>
