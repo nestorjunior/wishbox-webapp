@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button, Card, Field } from "@/components/ui";
 import { BottomNav } from "@/components/BottomNav";
 import { FormHeader } from "@/components/FormHeader";
+import { ListMembersSheet } from "@/components/ListMembersSheet";
 import { Screen } from "@/components/Screen";
 import { useToast } from "@/components/Toast";
 import { auth } from "@/lib/firebase";
@@ -95,6 +96,7 @@ function ListForm({
   const [privacy, setPrivacy] = useState<Privacy>(editingList?.privacy ?? "public");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [createdGuestList, setCreatedGuestList] = useState<GiftList>();
 
   const canEdit = !editingList || isListEditor(editingList, backendUser);
   const privacyOptions = useMemo(
@@ -175,27 +177,34 @@ function ListForm({
           private: privacy !== "public",
           listType: privacy === "guests" ? "collaborative" : "standard",
         });
+        const newList: GiftList = {
+          id: created.id,
+          ownerId: created.ownerId || backendUser.id,
+          listType: created.listType ?? (privacy === "guests" ? "collaborative" : "standard"),
+          name: created.name,
+          description: created.description ?? normalizedDescription,
+          emoji,
+          tint: "lilac",
+          privacy,
+          paused: false,
+          category: template[1],
+          members: [
+            {
+              userId: created.ownerId || backendUser.id,
+              role: "owner",
+            },
+          ],
+        };
         dispatch({
           type: "list/create",
-          list: {
-            id: created.id,
-            ownerId: backendUser.id,
-            listType: created.listType ?? (privacy === "guests" ? "collaborative" : "standard"),
-            name: created.name,
-            description: created.description ?? normalizedDescription,
-            emoji,
-            tint: "lilac",
-            privacy,
-            paused: false,
-            category: template[1],
-            members: [
-              {
-                userId: created.ownerId || backendUser.id,
-                role: "owner",
-              },
-            ],
-          },
+          list: newList,
         });
+
+        if (privacy === "guests") {
+          setCreatedGuestList(newList);
+          return;
+        }
+
         showToast({ text: "Lista criada com sucesso!" });
         router.replace(
           returnToAddProduct
@@ -331,6 +340,19 @@ function ListForm({
         </form>
       </main>
       <BottomNav />
+      {createdGuestList ? (
+        <ListMembersSheet
+          list={createdGuestList}
+          visible
+          onClose={() => {
+            router.replace(
+              returnToAddProduct
+                ? `/add-product?listId=${encodeURIComponent(createdGuestList.id)}&submitAfterListCreation=true`
+                : `/list/${createdGuestList.id}`,
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }
