@@ -324,7 +324,7 @@ export default function ListPage() {
               <div className="mt-2 flex items-center gap-2">
               <ListPrivacySelector list={list} />
 
-              {list.privacy === "guests" ? (
+              {list.privacy === "guests" && listMembers.length > 0 ? (
                 <div className="flex items-center rounded-full bg-card p-1">
                   <div className="flex -space-x-2 px-1">
                     {listMembers.slice(0, 3).map((member) => {
@@ -337,15 +337,20 @@ export default function ListPage() {
                     })}
                   </div>
                   {listMembers.length > 0 ? <span className="px-1 text-xs font-semibold">{listMembers.length}</span> : null}
-                  {canInvite ? (
-                    <button type="button" aria-label="Adicionar convidados" onClick={() => setMembersOpen(true)} className="flex size-7 items-center justify-center rounded-full bg-background text-muted">
-                      <Plus size={16} />
-                    </button>
-                  ) : null}
                   <button type="button" aria-label="Abrir chat da lista" disabled={openingChat} onClick={() => void openGroupChat()} className="ml-1 flex size-7 items-center justify-center rounded-full bg-background text-muted disabled:opacity-50">
                     {openingChat ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={16} />}
                   </button>
                 </div>
+              ) : null}
+              {list.privacy === "guests" && canInvite ? (
+                <button
+                  type="button"
+                  onClick={() => setMembersOpen(true)}
+                  className="flex h-9 items-center gap-2 rounded-full bg-card px-3 text-xs font-semibold text-foreground"
+                >
+                  <Plus size={16} className="text-muted" />
+                  Convidar
+                </button>
               ) : null}
               </div>
             )}
@@ -359,15 +364,27 @@ export default function ListPage() {
       </div>
 
       {products.length === 0 ? (
-        <EmptyState
-          emoji="🎁"
-          title="Nenhum produto ainda"
-          description={
-            canEdit
-              ? "Adicione produtos para começar sua lista."
-              : "Essa lista ainda não tem produtos."
-          }
-        />
+        canEdit ? (
+          <div className="mx-auto mt-1 flex min-h-[398px] w-full max-w-[540px] items-center justify-center rounded-xl border border-border bg-card px-6 py-10 shadow-card">
+            <EmptyState
+              emoji="📦"
+              title="Vamos adicionar algo?"
+              description="Sua lista está criada. Adicione o primeiro produto para começar a receber presentes."
+              action={(
+                <button
+                  type="button"
+                  onClick={() => router.push(`/add-product?listId=${list.id}`)}
+                  className="mt-3 flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-bold text-white shadow-primary"
+                >
+                  <Plus size={17} />
+                  Adicionar produto
+                </button>
+              )}
+            />
+          </div>
+        ) : (
+          <EmptyState emoji="🎁" title="Nenhum produto ainda" description="Essa lista ainda não tem produtos." />
+        )
       ) : (
         <div className={`grid grid-cols-2 gap-3 sm:mx-5 sm:grid-cols-[repeat(auto-fill,218px)] sm:gap-4 ${list.paused ? "pointer-events-none opacity-50 grayscale" : ""}`}>
           {products.map((product) => (

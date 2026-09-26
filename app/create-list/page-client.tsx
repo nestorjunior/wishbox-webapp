@@ -175,32 +175,38 @@ function ListForm({
           private: privacy !== "public",
           listType: privacy === "guests" ? "collaborative" : "standard",
         });
+        const newList: GiftList = {
+          id: created.id,
+          ownerId: created.ownerId || backendUser.id,
+          listType: created.listType ?? (privacy === "guests" ? "collaborative" : "standard"),
+          name: created.name,
+          description: created.description ?? normalizedDescription,
+          emoji,
+          tint: template[3].replace("bg-tint-", "") as GiftList["tint"],
+          privacy,
+          paused: false,
+          category: template[1],
+          members: [
+            {
+              userId: created.ownerId || backendUser.id,
+              role: "owner",
+            },
+          ],
+        };
         dispatch({
           type: "list/create",
-          list: {
-            id: created.id,
-            ownerId: backendUser.id,
-            listType: created.listType ?? (privacy === "guests" ? "collaborative" : "standard"),
-            name: created.name,
-            description: created.description ?? normalizedDescription,
-            emoji,
-            tint: "lilac",
-            privacy,
-            paused: false,
-            category: template[1],
-            members: [
-              {
-                userId: created.ownerId || backendUser.id,
-                role: "owner",
-              },
-            ],
-          },
+          list: newList,
         });
-        showToast({ text: "Lista criada com sucesso!" });
+
+        if (privacy !== "guests") {
+          showToast({ text: "Lista criada com sucesso!" });
+        }
         router.replace(
           returnToAddProduct
             ? `/add-product?listId=${encodeURIComponent(created.id)}&submitAfterListCreation=true`
-            : "/",
+            : privacy === "guests"
+              ? `/list/${created.id}`
+              : "/",
         );
       }
     } catch (error) {

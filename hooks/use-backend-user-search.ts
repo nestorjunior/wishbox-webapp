@@ -31,12 +31,16 @@ function matchesSearchTerm(user: User, term: string) {
   );
 }
 
-export function useBackendUserSearch(query: string, excludedUserId?: string) {
+export function useBackendUserSearch(
+  query: string,
+  excludedUserId?: string,
+  loadInitialUsers = false,
+) {
   const term = query.trim();
   const [state, setState] = useState<SearchState>(initialState);
 
   useEffect(() => {
-    if (term.length < 3) {
+    if (term.length < 3 && !(loadInitialUsers && term.length === 0)) {
       return;
     }
 
@@ -67,9 +71,11 @@ export function useBackendUserSearch(query: string, excludedUserId?: string) {
 
         try {
           const token = await firebaseUser.getIdToken();
-          let users = (await autocompleteBackendUsers(token, term, { limit: 20 })).map(
-            backendUserToLocalUser
-          );
+          let users = term
+            ? (await autocompleteBackendUsers(token, term, { limit: 20 })).map(
+                backendUserToLocalUser,
+              )
+            : (await fetchBackendUsers(token)).map(backendUserToLocalUser).slice(0, 20);
 
           if (users.length === 0) {
             users = (await fetchBackendUsers(token))
@@ -104,13 +110,14 @@ export function useBackendUserSearch(query: string, excludedUserId?: string) {
       active = false;
       clearTimeout(timeout);
     };
-  }, [excludedUserId, term]);
+  }, [excludedUserId, loadInitialUsers, term]);
 
-  const hasCurrentTerm = term.length >= 3 && state.term === term;
+  const isSearchableTerm = term.length >= 3 || (loadInitialUsers && term.length === 0);
+  const hasCurrentTerm = isSearchableTerm && state.term === term;
 
   return {
     users: hasCurrentTerm ? state.users : [],
     error: hasCurrentTerm ? state.error : null,
-    loading: term.length >= 3 && (!hasCurrentTerm || state.loading),
+    loading: isSearchableTerm && (!hasCurrentTerm || state.loading),
   };
 }
